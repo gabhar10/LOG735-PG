@@ -1,5 +1,4 @@
 import argparse, random, sys
-from pprint import pprint
 
 # Define topology variables
 MAX_MINER_PEERS=3
@@ -30,7 +29,7 @@ if args.num_miners < ANCHOR_PEERS:
 while len(USED_PORTS) < ANCHOR_PEERS:
     anchor_port=random.randrange(MIN_PORT, MAX_PORT)
     if anchor_port not in USED_PORTS:
-        node = {'ID': 'AM-%d' % anchor_port, 'port': anchor_port, 'role': 'anchor-miner', 'peers': []}
+        node = {'ID': 'AM%d' % anchor_port, 'port': anchor_port, 'role': 'anchor-miner', 'peers': []}
         ANCHOR_MINERS.append(node)
         USED_PORTS.append(anchor_port)
 
@@ -38,7 +37,7 @@ while len(USED_PORTS) < ANCHOR_PEERS:
 while len(USED_PORTS) < args.num_miners:
     port=random.randrange(MIN_PORT, MAX_PORT)
     if port not in USED_PORTS:
-        node = {'ID': 'M-%d' % port, 'port': port, 'role': 'miner', 'malicious': False, 'peers': []}
+        node = {'ID': 'M%d' % port, 'port': port, 'role': 'miner', 'malicious': False, 'peers': []}
         MINERS.append(node)
         USED_PORTS.append(port)
 
@@ -46,7 +45,7 @@ while len(USED_PORTS) < args.num_miners:
 while len(USED_PORTS) < args.num_miners + args.num_clients:
     port=random.randrange(MIN_PORT, MAX_PORT)
     if port not in USED_PORTS:
-        node = {'ID': 'C-%d' % port, 'port': port, 'role': 'client', 'peers': []}
+        node = {'ID': 'C%d' % port, 'port': port, 'role': 'client', 'peers': []}
         CLIENTS.append(node)
         USED_PORTS.append(port)
 
@@ -73,13 +72,27 @@ for i in CLIENTS:
 for i in random.sample(MINERS, args.num_mal_miners):
     i['malicious'] = True
 
-# Print topology for debuging usage
-print("ANCHOR-MINERS")
-pprint(ANCHOR_MINERS)
-print("MINERS")
-pprint(MINERS)
-print("CLIENTS")
-pprint(CLIENTS)
+# Create all docker-compose client services
+services = ''
+for i in CLIENTS:
+    services += '%s:\n  image: centos:latest\n  container_name: client-%s\n  environment:\n\
+    - PEERS=\'%s\'\n  networks:\n    - blockchain\n  ports:\n    - %s:%s\n  command: echo \'$PEERS\'\n' \
+                % (i['ID'], i['port'], " ".join(str(x) for x in i['peers']), i['port'], i['port'])
 
+for i in ANCHOR_MINERS:
+    services += '%s:\n  image: centos:latest\n  container_name: anchor-miner-%s\n  environment:\n\
+    - PEERS=\'%s\'\n  networks:\n    - blockchain\n  ports:\n    - %s:%s\n  command: echo \'$PEERS\'\n' \
+                % (i['ID'], i['port'], " ".join(str(x) for x in i['peers']), i['port'], i['port'])
 
+for i in MINERS:
+    services += '%s:\n  image: centos:latest\n  container_name: miner-%s\n  environment:\n\
+    - PEERS=\'%s\'\n  networks:\n    - blockchain\n  ports:\n    - %s:%s\n  command: echo \'$PEERS\'\n' \
+                % (i['ID'], i['port'], " ".join(str(x) for x in i['peers']), i['port'], i['port'])
 
+with open('docker-compose.template', 'r') as f:
+    content = f.read()
+
+content = content.replace('%SERVICES%', ''.join('  '+line for line in services.splitlines(True)))
+
+with open('docker-compose.yaml', 'w+') as f:
+    f.write(content)
