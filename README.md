@@ -5,7 +5,9 @@ To create a valid _docker-compose.yaml_ file, use the _topology-creation.py_ scr
 
 ```bash
 # This script expects docker-compose.template to be in the present working directory
-python3 topology-creation.py --miners <amount-miners> --clients <amount-clients> --malicious-miners <amount-malicious-miners>
+python3 topology-creation.py --miners <amount-miners> \
+  --clients <amount-clients> \ 
+  --malicious-miners <amount-malicious-miners>
 ```
 
 Variable Name | Value Type | Description
