@@ -20,9 +20,13 @@ parser.add_argument('--malicious-miners', dest='num_mal_miners', help='total num
                     type=int, required=True)
 args = parser.parse_args()
 
-# Sanity check for minimal amount of anchor-miners
+# Sanity check for minimal amount of anchor-miners and number of malicious miners
 if args.num_miners < ANCHOR_PEERS:
     print('Number of miners must be greater or equal than %d' % ANCHOR_PEERS)
+    sys.exit(1)
+
+if args.num_mal_miners >= args.num_miners:
+    print('Number of malicious miners must be smaller than miners')
     sys.exit(1)
 
 # Define anchor-miners
@@ -66,7 +70,6 @@ for i in MINERS:
 # Connect clients to a random anchor
 for i in CLIENTS:
     i['peers'].append(random.choice(ANCHOR_MINERS)['port'])
-
 
 # Randomly select malicious miners
 for i in random.sample(MINERS, args.num_mal_miners):
