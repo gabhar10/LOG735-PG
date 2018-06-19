@@ -1,42 +1,28 @@
 package rpc
 
 import (
-	"LOG735-PG/src/client"
-	"LOG735-PG/src/block"
+	"LOG735-PG/src/app"
 )
 
 type ClientRPC struct {
-	client *client.Client
+	client *app.Client
 }
 
-type ConnectionRPC struct {
-	SenderID []byte
-}
-
-type MessageRPC struct {
-	ConnectionRPC
-	Message string
-}
-
-type BlockRPC struct {
-	ConnectionRPC
-	block.Block
-}
-
-func (c *ClientRPC) Connect(args *ConnectionRPC) error {
-	// Send Connect function to all pre-assigned peers
+func (c *ClientRPC) Peer(args *ConnectionRPC) error {
+	// Peer with Client
+	// CLIENT-01
 	// To implement
 	return nil
 }
 
-
-func (c *ClientRPC) HandleMessage(args *MessageRPC) error {
-	// Upon reception of message by another client
+func (c *ClientRPC) DeliverMessage(args *MessageRPC) error {
+	// Upon reception of message by a client
+	// CLIENT-07
 	// To implement
 	return nil
 }
 
-func (c *ClientRPC) HandleBlock(args *BlockRPC) error {
+func (c *ClientRPC) DeliverBlock(args *BlockRPC) error {
 	// Upon reception of block from a miner
 	// To implement
 	return nil

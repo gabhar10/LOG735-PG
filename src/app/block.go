@@ -1,11 +1,9 @@
-package block
+package app
 
 import (
 	"hash"
 	"time"
 )
-
-const BLOCK_SIZE = 50
 
 type Header struct {
 	PreviousBlock hash.Hash64
@@ -15,5 +13,5 @@ type Header struct {
 
 type Block struct {
 	Header Header
-	Messages [BLOCK_SIZE]string
+	Messages [BlockSize]string
 }
