@@ -6,7 +6,7 @@ import (
 )
 
 type MinerRPC struct {
-	// Miner
+	miner *app.Miner
 }
 
 type GetBlocksRPC struct {
@@ -19,6 +19,7 @@ type BlocksRPC struct {
 }
 
 func (m *MinerRPC) Peer(args *ConnectionRPC, resp *BlocksRPC) error {
+	// MINEUR-13
 	// Peer with Miner/Client
 	// MINEUR-01
 	// To implement
@@ -32,6 +33,8 @@ func (m *MinerRPC) Peer(args *ConnectionRPC, resp *BlocksRPC) error {
 		Blocks: blocks,
 	}
 
+	// Broadcast to all peers presence of new peer
+	// MINEUR-08
 	return nil
 }
 
@@ -45,6 +48,9 @@ func (m *MinerRPC) DeliverMessage(args *MessageRPC) error {
 func (m *MinerRPC) DeliverBlock(args *BlockRPC) error {
 	// Upon reception of block from a miner
 	// To implement
+	// MINEUR-09
+	// MINEUR-11
+	// If block is valid, halt current work to find block and start a new one including this new one
 	return nil
 }
 
