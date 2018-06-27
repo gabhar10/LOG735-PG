@@ -7,6 +7,7 @@ import (
 
 type Header struct {
 	PreviousBlock hash.Hash64
+	Hash hash.Hash64
 	Nounce int64
 	Date time.Time
 }

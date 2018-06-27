@@ -1,5 +1,10 @@
 package app
 
+import (
+	"time"
+	"hash"
+)
+
 type Miner struct {
 	Chain []Block // MINEUR-07
 }
@@ -17,8 +22,17 @@ func (m *Miner) CreateBlock() error {
 	// MINEUR-10
 	// MINEUR-14
 	// To implement
-	header := &Header{}
-	err := m.findNounce(header, uint64(0))
+	var lastBlockHash hash.Hash64
+	lastBlockHash = nil
+	if len(m.Chain) > 0 { 
+		lastBlockHash = m.Chain[len(m.Chain)-1].Header.Hash
+	}
+	 
+	header := Header{PreviousBlock: lastBlockHash, Date: time.Now()}
+	newBlock := Block{Header: header}
+	m.Chain = append(m.Chain, newBlock)
+
+	err := m.findNounce(&header, uint64(0))
 	if err != nil {
 		return err
 	}
