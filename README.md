@@ -17,3 +17,9 @@ Variable Name | Value Type | Description
 amount-miners | Integer | Total number of miners in the network. A subset are anchor miners
 amount-clients | Integer | Total number of clients in the network
 amount-malicious-miners | Integer | Total number of malicious miners in the network. Is a subnet of *honest* miners.
+
+
+## Destroy topology
+```bash
+make destroy
+```
