@@ -8,15 +8,14 @@ RUN mv go /usr/local
 
 # Setup golang environment variables
 ENV GOROOT=/usr/local/go
-ENV GOPATH=/root/LOG735
 ENV PATH=$GOPATH/bin:$GOROOT/bin:$PATH
 
 # Add source code 
-RUN install -d /root/LOG735
-COPY src/ /root/LOG735
+RUN install -d /usr/local/go/src/LOG735-PG/src
+COPY src/ /usr/local/go/src/LOG735-PG/src
 
 # Compile source code
-WORKDIR /root/LOG735
+WORKDIR /usr/local/go/src/LOG735-PG/src
 RUN go build main.go
 
-CMD /root/LOG735/main
+CMD /usr/local/go/src/LOG735-PG/src/main
