@@ -78,19 +78,19 @@ for i in random.sample(MINERS, args.num_mal_miners):
 # Create all docker-compose client services
 services = ''
 for i in CLIENTS:
-    services += '%s:\n  image: centos:latest\n  container_name: client-%s\n  environment:\n\
-    - PEERS=\'%s\'\n  networks:\n    - blockchain\n  ports:\n    - %s:%s\n  command: echo \'$PEERS\'\n' \
-                % (i['ID'], i['port'], " ".join(str(x) for x in i['peers']), i['port'], i['port'])
+    services += '%s:\n  image: log735:latest\n  container_name: node-%s\n  environment:\n\
+    - PEERS=%s\n    - ROLE=client\n    - PORT=%s\n  networks:\n    - blockchain\n' \
+                % (i['ID'], i['port'], " ".join(str(x) for x in i['peers']), i['port'])
 
 for i in ANCHOR_MINERS:
-    services += '%s:\n  image: centos:latest\n  container_name: anchor-miner-%s\n  environment:\n\
-    - PEERS=\'%s\'\n  networks:\n    - blockchain\n  ports:\n    - %s:%s\n  command: echo \'$PEERS\'\n' \
-                % (i['ID'], i['port'], " ".join(str(x) for x in i['peers']), i['port'], i['port'])
+    services += '%s:\n  image: log735:latest\n  container_name: node-%s\n  environment:\n\
+    - PEERS=%s\n    - ROLE=miner\n    - PORT=%s\n  networks:\n    - blockchain\n' \
+                % (i['ID'], i['port'], " ".join(str(x) for x in i['peers']), i['port'])
 
 for i in MINERS:
-    services += '%s:\n  image: centos:latest\n  container_name: miner-%s\n  environment:\n\
-    - PEERS=\'%s\'\n  networks:\n    - blockchain\n  ports:\n    - %s:%s\n  command: echo \'$PEERS\'\n' \
-                % (i['ID'], i['port'], " ".join(str(x) for x in i['peers']), i['port'], i['port'])
+    services += '%s:\n  image: log735:latest\n  container_name: node-%s\n  environment:\n\
+    - PEERS=%s\n    - ROLE=miner\n    - PORT=%s\n  networks:\n    - blockchain\n' \
+                % (i['ID'], i['port'], " ".join(str(x) for x in i['peers']), i['port'])
 
 with open('docker-compose.template', 'r') as f:
     content = f.read()
