@@ -1,10 +1,11 @@
-import argparse, random, sys
+import argparse, random, sys, http.server, socketserver
 
 # Define topology variables
 MAX_MINER_PEERS=3
 ANCHOR_PEERS=3
 MIN_PORT = 7000
 MAX_PORT = 7499
+PORT = 8000
 USED_PORTS = []
 ANCHOR_MINERS = []
 MINERS = []
@@ -75,23 +76,36 @@ for i in CLIENTS:
 for i in random.sample(MINERS, args.num_mal_miners):
     i['malicious'] = True
 
-# Create all docker-compose client services
+# Create all docker-compose client services and vis.js content
 services = ''
+visjs_vertices = ''
+visjs_edges = ''
 for i in CLIENTS:
     services += '%s:\n  image: log735:latest\n  container_name: node-%s\n  environment:\n\
     - PEERS=%s\n    - ROLE=client\n    - PORT=%s\n  networks:\n    - blockchain\n' \
                 % (i['ID'], i['port'], " ".join(str(x) for x in i['peers']), i['port'])
+    visjs_vertices += '        {id: %s, label: \'%s\'},\n' % (i['port'], i['ID'])
+
+    for x in i['peers']:
+        visjs_edges += '        {from: %s, to: %s},\n' % (i['port'], x)
 
 for i in ANCHOR_MINERS:
     services += '%s:\n  image: log735:latest\n  container_name: node-%s\n  environment:\n\
     - PEERS=%s\n    - ROLE=miner\n    - PORT=%s\n  networks:\n    - blockchain\n' \
                 % (i['ID'], i['port'], " ".join(str(x) for x in i['peers']), i['port'])
+    visjs_vertices += '        {id: %s, label: \'%s\'},\n' % (i['port'], i['ID'])
+    for x in i['peers']:
+        visjs_edges += '        {from: %s, to: %s},\n' % (i['port'], x)
 
 for i in MINERS:
     services += '%s:\n  image: log735:latest\n  container_name: node-%s\n  environment:\n\
     - PEERS=%s\n    - ROLE=miner\n    - PORT=%s\n  networks:\n    - blockchain\n' \
                 % (i['ID'], i['port'], " ".join(str(x) for x in i['peers']), i['port'])
+    visjs_vertices += '        {id: %s, label: \'%s\'},\n' % (i['port'], i['ID'])
+    for x in i['peers']:
+        visjs_edges += '        {from: %s, to: %s},\n' % (i['port'], x)
 
+# Write docker-compose.yaml
 with open('docker-compose.template', 'r') as f:
     content = f.read()
 
@@ -99,3 +113,20 @@ content = content.replace('%SERVICES%', ''.join('  '+line for line in services.s
 
 with open('docker-compose.yaml', 'w+') as f:
     f.write(content)
+
+# Write index.html
+with open('index.html.template', 'r') as f:
+    content = f.read()
+
+content = content.replace('%VERTICES%', ''.join(''+line for line in visjs_vertices[:-2].splitlines(True)))
+content = content.replace('%EDGES%', ''.join(''+line for line in visjs_edges[:-2].splitlines(True)))
+
+with open('index.html', 'w+') as f:
+    f.write(content)
+
+# Start webserver
+Handler = http.server.SimpleHTTPRequestHandler
+
+with socketserver.TCPServer(("", PORT), Handler) as httpd:
+    print("Open web page at http://127.0.0.1:%s to see running topology" % PORT)
+    httpd.serve_forever()
