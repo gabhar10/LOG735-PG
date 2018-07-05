@@ -24,7 +24,7 @@ make clean
 ```
 
 ## Inspect logs
-The logs are visible at http:localhost:3000
+The logs are visible at http://localhost:3000
 
 You can also consult them with
 ```bash
