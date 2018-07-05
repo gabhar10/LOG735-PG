@@ -1,3 +1,4 @@
 docker-compose.yaml
-topology/index.html
+webapp/frontend/index.html
+webapp/docker-compose.logs
 .idea
