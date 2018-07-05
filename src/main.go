@@ -3,7 +3,6 @@ package main
 import (
 	"LOG735-PG/src/app"
 	"LOG735-PG/src/node"
-	"fmt"
 	"log"
 	"os"
 	"time"
@@ -43,10 +42,10 @@ func main() {
 		log.Fatal("Peering error:", err)
 	}
 
-	fmt.Println("Hello")
+	// fmt.Println("Hello")
 
-	miner := app.Miner{}
-	miner.CreateBlock()
+	// miner := app.Miner{}
+	// miner.CreateBlock()
 
 	for {
 		time.Sleep(time.Hour)

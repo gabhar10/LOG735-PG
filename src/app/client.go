@@ -1,20 +1,21 @@
 package app
 
 import (
-	"strings"
-	brpc "LOG735-PG/src/rpc"
 	"LOG735-PG/src/node"
-	"net"
-	"net/rpc"
-	"net/http"
-	"log"
+	brpc "LOG735-PG/src/rpc"
 	"fmt"
+	"log"
+	"net"
+	"net/http"
+	"net/rpc"
+	"strings"
+	"time"
 )
 
 type Client struct {
-	ID string // i.e. Run-time port associated to container
-	blocks []node.Block // Can be a subset of the full chain
-	peers []string // Slice of IDs
+	ID         string       // i.e. Run-time port associated to container
+	blocks     []node.Block // Can be a subset of the full chain
+	peers      []string     // Slice of IDs
 	rpcHandler *brpc.NodeRPC
 }
 
@@ -41,6 +42,10 @@ func (c *Client) SetupRPC(port string) error {
 	return nil
 }
 
+func (c Client) ReceiveMessage(content string, hello time.Time) {
+
+}
+
 func (c Client) Peer() error {
 	for _, peer := range c.peers {
 		client, err := brpc.ConnectTo(peer)
@@ -60,7 +65,7 @@ func (c Client) Peer() error {
 		log.Printf("Successfully peered with node-%s\n", peer)
 		log.Printf("CLIENT : Sending message to peer %s\n", peer)
 		var reply2 int
-		message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, "Bonjour"}
+		message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, "Bonjour", time.Now()}
 		client.Call("NodeRPC.DeliverMessage", message, &reply2)
 	}
 
@@ -87,5 +92,3 @@ func (c Client) Disconnect() error {
 	// To implement
 	return nil
 }
-
-

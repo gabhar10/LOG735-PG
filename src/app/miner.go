@@ -13,11 +13,19 @@ import (
 	"time"
 )
 
+type Message struct {
+	Content string
+	Time    time.Time
+}
+
 type Miner struct {
-	ID         string       // i.e. Run-time port associated to container
-	blocks     []node.Block // MINEUR-07
-	peers      []string     // Slice of IDs
-	rpcHandler *brpc.NodeRPC
+	ID              string       // i.e. Run-time port associated to container
+	blocks          []node.Block // MINEUR-07
+	peers           []string     // Slice of IDs
+	rpcHandler      *brpc.NodeRPC
+	messageQueue    []Message
+	messageChannels []chan Message
+	blocksCHannels  []chan node.Block
 }
 
 func NewMiner(port, peers string) node.Node {
@@ -26,6 +34,9 @@ func NewMiner(port, peers string) node.Node {
 		make([]node.Block, node.MinBlocksReturnSize),
 		strings.Split(peers, " "),
 		new(brpc.NodeRPC),
+		[]Message{},
+		make([]chan Message, len(peers)),
+		make([]chan node.Block, len(peers)),
 	}
 	m.rpcHandler.Node = m
 	return m
@@ -123,4 +134,30 @@ func (m Miner) findNounce(header *node.Header, difficulty int) error {
 	fmt.Println("Nounce : ", nounce)
 	header.Hash = hashedHeader
 	return nil
+}
+
+func (m Miner) ReceiveMessage(content string, hello time.Time) {
+
+}
+
+func (m Miner) listenerRPC() {
+	for {
+		//rpcHandler.DeliverMessage()
+		//when recieving message, add it to messageQueue
+		//when recieving block, cancel mining, update currentBlock
+	}
+
+}
+
+func (m Miner) mining() {
+	for {
+		//check if messageQueue as enough message to mine
+		//else wait
+		//if mining, must be cancellable if we recieve another valid block
+
+		if len(m.messageQueue) >= node.BlockSize {
+			m.CreateBlock()
+		}
+
+	}
 }
