@@ -1,25 +1,22 @@
 package app
 
 import (
-<<<<<<< HEAD
-	brpc "LOG735-PG/src/rpc"
 	"LOG735-PG/src/node"
-	"strings"
+	brpc "LOG735-PG/src/rpc"
+	"crypto/sha256"
+	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"net/rpc"
-	"fmt"
-	"log"
-=======
+	"strings"
 	"time"
-	"hash"
->>>>>>> first draft creating miner block
 )
 
 type Miner struct {
-	ID string // i.e. Run-time port associated to container
-	blocks []node.Block // MINEUR-07
-	peers []string // Slice of IDs
+	ID         string       // i.e. Run-time port associated to container
+	blocks     []node.Block // MINEUR-07
+	peers      []string     // Slice of IDs
 	rpcHandler *brpc.NodeRPC
 }
 
@@ -33,6 +30,7 @@ func NewMiner(port, peers string) node.Node {
 	m.rpcHandler.Node = m
 	return m
 }
+
 // MINEUR-12
 
 func (m *Miner) SetupRPC(port string) error {
@@ -83,22 +81,17 @@ func (m *Miner) CreateBlock() error {
 	// MINEUR-10
 	// MINEUR-14
 	// To implement
-<<<<<<< HEAD
-	header := &node.Header{}
-	err := m.findNounce(header, uint64(0))
-=======
-	var lastBlockHash hash.Hash64
-	lastBlockHash = nil
-	if len(m.Chain) > 0 { 
-		lastBlockHash = m.Chain[len(m.Chain)-1].Header.Hash
-	}
-	 
-	header := Header{PreviousBlock: lastBlockHash, Date: time.Now()}
-	newBlock := Block{Header: header}
-	m.Chain = append(m.Chain, newBlock)
+	var lastBlockHash [sha256.Size]byte
 
-	err := m.findNounce(&header, uint64(0))
->>>>>>> first draft creating miner block
+	if len(m.blocks) > 0 {
+		lastBlockHash = m.blocks[len(m.blocks)-1].Header.Hash
+	}
+
+	header := node.Header{PreviousBlock: lastBlockHash, Date: time.Now()}
+	newBlock := node.Block{Header: header}
+	m.blocks = append(m.blocks, newBlock)
+
+	err := m.findNounce(&header, 2)
 	if err != nil {
 		return err
 	}
@@ -108,7 +101,26 @@ func (m *Miner) CreateBlock() error {
 	return nil
 }
 
-func (m Miner) findNounce(header *node.Header, difficulty uint64) error {
+func (m Miner) findNounce(header *node.Header, difficulty int) error {
 	// MINEUR-05
+	var hashedHeader [sha256.Size]byte
+	var firstCharacters string
+	nounce := uint64(0)
+
+	fmt.Println("Difficulty : ", difficulty)
+
+	for {
+		header.Nounce = nounce
+		hashedHeader = sha256.Sum256([]byte(fmt.Sprintf("%v", header)))
+		firstCharacters = string(hashedHeader[:difficulty])
+
+		if strings.Count(firstCharacters, "0") == difficulty {
+			break
+		}
+		nounce++
+	}
+	fmt.Println("firstCharacters : ", firstCharacters)
+	fmt.Println("Nounce : ", nounce)
+	header.Hash = hashedHeader
 	return nil
 }

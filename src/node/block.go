@@ -1,18 +1,18 @@
 package node
 
 import (
-	"hash"
+	"crypto/sha256"
 	"time"
 )
 
 type Header struct {
-	PreviousBlock hash.Hash64
-	Hash hash.Hash64
-	Nounce int64
-	Date time.Time
+	PreviousBlock [sha256.Size]byte
+	Hash          [sha256.Size]byte
+	Nounce        uint64
+	Date          time.Time
 }
 
 type Block struct {
-	Header Header
+	Header   Header
 	Messages [BlockSize]string
 }
