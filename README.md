@@ -1,5 +1,10 @@
 # LOG735-PG
 
+## Prerequisites
+* docker-ce
+* docker-compose
+* python3
+
 ## Build docker image
 
 ```bash

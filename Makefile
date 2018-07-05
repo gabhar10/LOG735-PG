@@ -8,7 +8,6 @@ build:
 	cd webapp; docker build -t log735-webapp:latest .
 run:	
 	cd topology; docker-compose up -d
-	touch webapp/docker-compose.logs
-	docker-compose -f topology/docker-compose.yaml logs --no-color -f > webapp/docker-compose.logs &
+	docker-compose -f topology/docker-compose.yaml logs -f > webapp/docker-compose.logs &
 	docker run -dt -v $(shell pwd)/webapp/docker-compose.logs:/root/webapp/docker-compose.logs -p 3000:3000 -p 40510:40510 --privileged --name log735-webapp log735-webapp:latest
 	python3 -m webbrowser -n "http://localhost:3000"

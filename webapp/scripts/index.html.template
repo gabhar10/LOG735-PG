@@ -7,15 +7,13 @@
         #mynetwork {
             width: 1024px;
             height: 768px;
-            border: 1px solid lightgray;
             float: left;
         }
     </style>
     <style type="text/css">
         #dc-logs {
             width: 1024px;
-            height: 768px;
-            border: 1px solid lightgray;
+            height: 1200px;
             vertical-align:top;
             float: left;
         }
@@ -24,7 +22,9 @@
 <body>
 <h1>Topology Visualizer</h1>
 <div id="mynetwork"></div>
-<textarea id="dc-logs"></textarea>
+
+<iframe id="dc-logs" src="scripts/dc-logs.htm"></iframe>
+
 <script type="text/javascript">
     // create an array with nodes
     var nodes = new vis.DataSet([
@@ -64,10 +64,12 @@
     };
 
     var div = document.getElementById('dc-logs');
-    
+
     ws.onmessage = function (ev) {
-        div.innerHTML += ev.data;
-        div.scrollTop = div.scrollHeight
+        if (ev.data == "update") {
+             div.contentWindow.location.reload();
+             div.scrollTop = div.scrollHeight;
+        }
     };
 </script>
 </body>
