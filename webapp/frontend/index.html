@@ -1,0 +1,129 @@
+<html>
+<head>
+    <script type="text/javascript" src="scripts/vis.min.js"></script>
+    <link href="scripts/vis.min.css" rel="stylesheet" type="text/css" />
+
+    <style type="text/css">
+        #mynetwork {
+            width: 1024px;
+            height: 768px;
+            border: 1px solid lightgray;
+            float: left;
+        }
+    </style>
+    <style type="text/css">
+        #dc-logs {
+            width: 1024px;
+            height: 768px;
+            border: 1px solid lightgray;
+            vertical-align:top;
+            float: left;
+        }
+    </style>
+</head>
+<body>
+<h1>Topology Visualizer</h1>
+<div id="mynetwork"></div>
+<textarea id="dc-logs"></textarea>
+<script type="text/javascript">
+    // create an array with nodes
+    var nodes = new vis.DataSet([
+        {id: 7145, label: 'C7145'},
+        {id: 7419, label: 'C7419'},
+        {id: 7019, label: 'C7019'},
+        {id: 7319, label: 'C7319'},
+        {id: 7172, label: 'C7172'},
+        {id: 7356, label: 'C7356'},
+        {id: 7237, label: 'C7237'},
+        {id: 7098, label: 'C7098'},
+        {id: 7252, label: 'C7252'},
+        {id: 7488, label: 'C7488'},
+        {id: 7322, label: 'C7322'},
+        {id: 7437, label: 'C7437'},
+        {id: 7126, label: 'C7126'},
+        {id: 7484, label: 'C7484'},
+        {id: 7372, label: 'C7372'},
+        {id: 7468, label: 'C7468'},
+        {id: 7442, label: 'C7442'},
+        {id: 7032, label: 'C7032'},
+        {id: 7090, label: 'C7090'},
+        {id: 7263, label: 'C7263'},
+        {id: 7418, label: 'AM7418'},
+        {id: 7018, label: 'AM7018'},
+        {id: 7109, label: 'AM7109'},
+        {id: 7192, label: 'M7192'},
+        {id: 7155, label: 'M7155'}
+    ]);
+
+    // create an array with edges
+    var edges = new vis.DataSet([
+        {from: 7145, to: 7109},
+        {from: 7419, to: 7418},
+        {from: 7019, to: 7418},
+        {from: 7319, to: 7109},
+        {from: 7172, to: 7018},
+        {from: 7356, to: 7418},
+        {from: 7237, to: 7018},
+        {from: 7098, to: 7109},
+        {from: 7252, to: 7109},
+        {from: 7488, to: 7109},
+        {from: 7322, to: 7418},
+        {from: 7437, to: 7418},
+        {from: 7126, to: 7109},
+        {from: 7484, to: 7418},
+        {from: 7372, to: 7109},
+        {from: 7468, to: 7018},
+        {from: 7442, to: 7109},
+        {from: 7032, to: 7418},
+        {from: 7090, to: 7418},
+        {from: 7263, to: 7109},
+        {from: 7418, to: 7018},
+        {from: 7418, to: 7109},
+        {from: 7018, to: 7418},
+        {from: 7018, to: 7109},
+        {from: 7109, to: 7418},
+        {from: 7109, to: 7018},
+        {from: 7192, to: 7418},
+        {from: 7192, to: 7018},
+        {from: 7192, to: 7109},
+        {from: 7155, to: 7109},
+        {from: 7155, to: 7109},
+        {from: 7155, to: 7418}
+    ]);
+
+    // create a network
+    var container = document.getElementById('mynetwork');
+
+    // provide the data in the vis format
+    var data = {
+        nodes: nodes,
+        edges: edges
+    };
+    var options = {
+        edges: {
+            arrows: {
+                to: {
+                    enabled: true
+                }
+            }
+        }
+    };
+    // initialize your network!
+    var network = new vis.Network(container, data, options);
+
+    // Start WebSocket to receive docker-compose logs 
+    var ws = new WebSocket('ws://localhost:40510');
+    ws.onopen = function () {
+        console.log('Connected')
+        ws.send('connected')
+    };
+
+    var div = document.getElementById('dc-logs');
+    
+    ws.onmessage = function (ev) {
+        div.innerHTML += ev.data;
+        div.scrollTop = div.scrollHeight
+    };
+</script>
+</body>
+</html>

@@ -1,11 +1,10 @@
-import argparse, random, sys, http.server, socketserver
+import argparse, random, sys
 
 # Define topology variables
 MAX_MINER_PEERS=3
 ANCHOR_PEERS=3
 MIN_PORT = 7000
 MAX_PORT = 7499
-PORT = 8000
 USED_PORTS = []
 ANCHOR_MINERS = []
 MINERS = []
@@ -115,18 +114,11 @@ with open('docker-compose.yaml', 'w+') as f:
     f.write(content)
 
 # Write index.html
-with open('index.html.template', 'r') as f:
+with open('../webapp/scripts/index.html.template', 'r') as f:
     content = f.read()
 
 content = content.replace('%VERTICES%', ''.join(''+line for line in visjs_vertices[:-2].splitlines(True)))
 content = content.replace('%EDGES%', ''.join(''+line for line in visjs_edges[:-2].splitlines(True)))
 
-with open('index.html', 'w+') as f:
+with open('../webapp/frontend/index.html', 'w+') as f:
     f.write(content)
-
-# Start webserver
-Handler = http.server.SimpleHTTPRequestHandler
-
-with socketserver.TCPServer(("", PORT), Handler) as httpd:
-    print("Open web page at http://127.0.0.1:%s to see running topology" % PORT)
-    httpd.serve_forever()
