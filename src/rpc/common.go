@@ -2,11 +2,11 @@ package rpc
 
 import (
 	"LOG735-PG/src/node"
-	"hash"
-	"time"
 	"fmt"
-	"net/rpc"
+	"hash"
 	"log"
+	"net/rpc"
+	"time"
 )
 
 type (
@@ -17,6 +17,7 @@ type (
 	MessageRPC struct {
 		ConnectionRPC
 		Message string
+		Time    time.Time
 	}
 
 	BlocksRPC struct {
@@ -26,20 +27,20 @@ type (
 
 	GetBlocksRPC struct {
 		FirstBlock hash.Hash
-		LastBlock hash.Hash
+		LastBlock  hash.Hash
 	}
 )
 
 func ConnectTo(port string) (*rpc.Client, error) {
 	maxTries := 5
 	var (
-		c *rpc.Client
+		c   *rpc.Client
 		err error
 	)
 	for i := 0; i < maxTries; i++ {
 		time.Sleep(time.Second)
 		log.Printf("Dialing %s, try #%d\n", port, i+1)
-		c, err = rpc.DialHTTP("tcp", fmt.Sprintf("node-%s:%s", port,  port))
+		c, err = rpc.DialHTTP("tcp", fmt.Sprintf("node-%s:%s", port, port))
 		if err == nil {
 			break
 		}

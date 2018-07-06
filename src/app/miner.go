@@ -1,21 +1,31 @@
 package app
 
 import (
-	brpc "LOG735-PG/src/rpc"
 	"LOG735-PG/src/node"
-	"strings"
+	brpc "LOG735-PG/src/rpc"
+	"crypto/sha256"
+	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"net/rpc"
-	"fmt"
-	"log"
+	"strings"
+	"time"
 )
 
+type Message struct {
+	Content string
+	Time    time.Time
+}
+
 type Miner struct {
-	ID string // i.e. Run-time port associated to container
-	blocks []node.Block // MINEUR-07
-	peers []string // Slice of IDs
-	rpcHandler *brpc.NodeRPC
+	ID              string       // i.e. Run-time port associated to container
+	blocks          []node.Block // MINEUR-07
+	peers           []string     // Slice of IDs
+	rpcHandler      *brpc.NodeRPC
+	messageQueue    []Message
+	messageChannels []chan Message
+	blocksCHannels  []chan node.Block
 }
 
 func NewMiner(port, peers string) node.Node {
@@ -24,10 +34,14 @@ func NewMiner(port, peers string) node.Node {
 		make([]node.Block, node.MinBlocksReturnSize),
 		strings.Split(peers, " "),
 		new(brpc.NodeRPC),
+		[]Message{},
+		make([]chan Message, len(peers)),
+		make([]chan node.Block, len(peers)),
 	}
 	m.rpcHandler.Node = m
 	return m
 }
+
 // MINEUR-12
 
 func (m *Miner) SetupRPC(port string) error {
@@ -78,8 +92,17 @@ func (m *Miner) CreateBlock() error {
 	// MINEUR-10
 	// MINEUR-14
 	// To implement
-	header := &node.Header{}
-	err := m.findNounce(header, uint64(0))
+	var lastBlockHash [sha256.Size]byte
+
+	if len(m.blocks) > 0 {
+		lastBlockHash = m.blocks[len(m.blocks)-1].Header.Hash
+	}
+
+	header := node.Header{PreviousBlock: lastBlockHash, Date: time.Now()}
+	newBlock := node.Block{Header: header}
+	m.blocks = append(m.blocks, newBlock)
+
+	err := m.findNounce(&header, 2)
 	if err != nil {
 		return err
 	}
@@ -89,7 +112,52 @@ func (m *Miner) CreateBlock() error {
 	return nil
 }
 
-func (m Miner) findNounce(header *node.Header, difficulty uint64) error {
+func (m Miner) findNounce(header *node.Header, difficulty int) error {
 	// MINEUR-05
+	var hashedHeader [sha256.Size]byte
+	var firstCharacters string
+	nounce := uint64(0)
+
+	fmt.Println("Difficulty : ", difficulty)
+
+	for {
+		header.Nounce = nounce
+		hashedHeader = sha256.Sum256([]byte(fmt.Sprintf("%v", header)))
+		firstCharacters = string(hashedHeader[:difficulty])
+
+		if strings.Count(firstCharacters, "0") == difficulty {
+			break
+		}
+		nounce++
+	}
+	fmt.Println("firstCharacters : ", firstCharacters)
+	fmt.Println("Nounce : ", nounce)
+	header.Hash = hashedHeader
 	return nil
+}
+
+func (m Miner) ReceiveMessage(content string, hello time.Time) {
+
+}
+
+func (m Miner) listenerRPC() {
+	for {
+		//rpcHandler.DeliverMessage()
+		//when recieving message, add it to messageQueue
+		//when recieving block, cancel mining, update currentBlock
+	}
+
+}
+
+func (m Miner) mining() {
+	for {
+		//check if messageQueue as enough message to mine
+		//else wait
+		//if mining, must be cancellable if we recieve another valid block
+
+		if len(m.messageQueue) >= node.BlockSize {
+			m.CreateBlock()
+		}
+
+	}
 }
