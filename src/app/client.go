@@ -12,12 +12,20 @@ import (
 	"time"
 )
 
-type Client struct {
-	ID         string       // i.e. Run-time port associated to container
-	blocks     []node.Block // Can be a subset of the full chain
-	peers      []string     // Slice of IDs
-	rpcHandler *brpc.NodeRPC
-}
+type (
+	Client struct {
+		ID          string       // i.e. Run-time port associated to container
+		blocks      []node.Block // Can be a subset of the full chain
+		peers       []string     // Slice of IDs
+		rpcHandler  *brpc.NodeRPC
+		connections []PeerConnection
+	}
+
+	PeerConnection struct {
+		ID   string
+		conn *rpc.Client
+	}
+)
 
 func NewClient(port, peers string) node.Node {
 	c := &Client{
@@ -25,6 +33,7 @@ func NewClient(port, peers string) node.Node {
 		make([]node.Block, node.MinBlocksReturnSize),
 		strings.Split(peers, " "),
 		new(brpc.NodeRPC),
+		make([]PeerConnection, 0),
 	}
 	c.rpcHandler.Node = c
 	return c
@@ -66,8 +75,14 @@ func (c Client) Peer() error {
 		if reply.Blocks != nil {
 			return fmt.Errorf("Blocks are not defined")
 		}
-		log.Printf("Successfully peered with node-%s\n", peer)
+		var newConnection = new(PeerConnection)
+		newConnection.ID = peer
+		newConnection.conn = client
+		c.connections = append(c.connections, *newConnection)
 	}
+
+	// start trafic generation
+	go c.StartMessageLoop()
 
 	return nil
 }
@@ -93,6 +108,17 @@ func (c Client) Disconnect() error {
 	return nil
 }
 
-func (c Client) ReceiveBlock(block node.Block) {
+func (c Client) StartMessageLoop() error {
+	log.Printf("Starting message loop")
+	for {
+		for _, conn := range c.connections {
+			time.Sleep(5 * time.Second)
+			log.Printf("CLIENT : Sending message to %s\n", conn.ID)
+			var reply int
+			message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, "Bonjour", time.Now()}
+			conn.conn.Call("NodeRPC.DeliverMessage", message, &reply)
+		}
+	}
 
+	return nil
 }
