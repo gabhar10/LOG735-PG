@@ -36,7 +36,7 @@ func (n *NodeRPC) DeliverMessage(args *MessageRPC, reply *int) error {
 	// MINEUR-03
 	// CLIENT-07
 	// To implement
-	log.Printf("NODE-RPC : I received %s from %s destined to %s\n", args.Message, args.PeerID, args.ConnectionRPC.)
+	log.Printf("NODE-RPC : I received %s from %s\n", args.Message, args.PeerID)
 
 	//node.receive()
 
