@@ -30,6 +30,10 @@ func NewClient(port, peers string) node.Node {
 	return c
 }
 
+func (c *Client) Start() {
+
+}
+
 func (c *Client) SetupRPC(port string) error {
 	rpc.Register(c.rpcHandler)
 	rpc.HandleHTTP()
@@ -91,4 +95,8 @@ func (c Client) Disconnect() error {
 	// CLIENT-05
 	// To implement
 	return nil
+}
+
+func (c Client) ReceiveBlock(block node.Block) {
+
 }

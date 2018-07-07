@@ -19,13 +19,13 @@ type Message struct {
 }
 
 type Miner struct {
-	ID              string       // i.e. Run-time port associated to container
-	blocks          []node.Block // MINEUR-07
-	peers           []string     // Slice of IDs
-	rpcHandler      *brpc.NodeRPC
-	messageQueue    []Message
-	messageChannels []chan Message
-	blocksCHannels  []chan node.Block
+	ID                string       // i.e. Run-time port associated to container
+	blocks            []node.Block // MINEUR-07
+	peers             []string     // Slice of IDs
+	rpcHandler        *brpc.NodeRPC
+	incomingMsgChan   chan Message
+	incomingBlockChan chan node.Block
+	quit              chan bool
 }
 
 func NewMiner(port, peers string) node.Node {
@@ -34,12 +34,16 @@ func NewMiner(port, peers string) node.Node {
 		make([]node.Block, node.MinBlocksReturnSize),
 		strings.Split(peers, " "),
 		new(brpc.NodeRPC),
-		[]Message{},
-		make([]chan Message, len(peers)),
-		make([]chan node.Block, len(peers)),
+		make(chan Message, 100),
+		make(chan node.Block, 10),
+		make(chan bool),
 	}
 	m.rpcHandler.Node = m
 	return m
+}
+
+func (m *Miner) Start() {
+	go m.mining()
 }
 
 // MINEUR-12
@@ -85,10 +89,11 @@ func (m Miner) Broadcast() error {
 	// DeliverMessage (RPC) to peers
 	// MINEUR-04
 	// To implement
+
 	return nil
 }
 
-func (m *Miner) CreateBlock() error {
+func (m *Miner) CreateBlock() node.Block {
 	// MINEUR-10
 	// MINEUR-14
 	// To implement
@@ -99,65 +104,57 @@ func (m *Miner) CreateBlock() error {
 	}
 
 	header := node.Header{PreviousBlock: lastBlockHash, Date: time.Now()}
-	newBlock := node.Block{Header: header}
-	m.blocks = append(m.blocks, newBlock)
+	var messages [node.BlockSize]Message
 
-	err := m.findNounce(&header, 2)
-	if err != nil {
-		return err
+	for i := 0; i < node.BlockSize; i++ {
+		messages[i] = <-m.incomingMsgChan
 	}
 
-	// Broadcast to all peers
-	// MINEUR-06
-	return nil
+	return node.Block{Header: header}
 }
 
-func (m Miner) findNounce(header *node.Header, difficulty int) error {
-	// MINEUR-05
+func (m Miner) ReceiveMessage(content string, temps time.Time) {
+	//when recieving message, add it to messageQueue
+	m.incomingMsgChan <- Message{content, temps}
+}
+
+func (m Miner) ReceiveBlock(block node.Block) {
+	m.quit <- false
+	// compare receivedBlock with miningBlock and
+	// delete messages from miningBlock that are in the receivedBlock if the receivedBlock is valid
+	// start another mining if we have len(messageQueue) > node.BlockSize
+}
+
+func (m *Miner) mining() {
 	var hashedHeader [sha256.Size]byte
 	var firstCharacters string
 	nounce := uint64(0)
+	block := m.CreateBlock()
 
-	fmt.Println("Difficulty : ", difficulty)
-
+	fmt.Println("Difficulty : ", node.MiningDifficulty)
+findingNounce:
 	for {
-		header.Nounce = nounce
-		hashedHeader = sha256.Sum256([]byte(fmt.Sprintf("%v", header)))
-		firstCharacters = string(hashedHeader[:difficulty])
+		select {
+		case <-m.quit:
+			return
+		default:
+			block.Header.Nounce = nounce
+			hashedHeader = sha256.Sum256([]byte(fmt.Sprintf("%v", block.Header)))
+			firstCharacters = string(hashedHeader[:node.MiningDifficulty])
 
-		if strings.Count(firstCharacters, "0") == difficulty {
-			break
+			if strings.Count(firstCharacters, "0") == node.MiningDifficulty {
+				//add semaphore for race condition between mining routines
+				break findingNounce
+			}
+			nounce++
 		}
-		nounce++
 	}
+
 	fmt.Println("firstCharacters : ", firstCharacters)
 	fmt.Println("Nounce : ", nounce)
-	header.Hash = hashedHeader
-	return nil
-}
-
-func (m Miner) ReceiveMessage(content string, hello time.Time) {
-
-}
-
-func (m Miner) listenerRPC() {
-	for {
-		//rpcHandler.DeliverMessage()
-		//when recieving message, add it to messageQueue
-		//when recieving block, cancel mining, update currentBlock
-	}
-
-}
-
-func (m Miner) mining() {
-	for {
-		//check if messageQueue as enough message to mine
-		//else wait
-		//if mining, must be cancellable if we recieve another valid block
-
-		if len(m.messageQueue) >= node.BlockSize {
-			m.CreateBlock()
-		}
-
+	block.Header.Hash = hashedHeader
+	m.blocks = append(m.blocks, block)
+	if len(m.quit) > 0 {
+		<-m.quit
 	}
 }
