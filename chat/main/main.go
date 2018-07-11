@@ -5,10 +5,16 @@ import (
 	"net/http"
 	"log"
 	"time"
+	"net/rpc"
+	//"os"
+	//brpc "LOG735-PG/src/rpc"
+	"os"
 )
 
 var clients = make(map[*websocket.Conn]bool)
 var broadcast = make(chan Message)
+
+var connections []PeerConnection
 
 var upgrader = websocket.Upgrader{}
 
@@ -18,7 +24,27 @@ type Message struct {
 	Message		string `json:"message"`
 }
 
+type PeerConnection struct {
+	ID			string
+	conn		*rpc.Client
+}
+
 func main() {
+	log.Printf("my peer is " + os.Getenv("PEERS"))
+
+	/*client, err := brpc.ConnectTo(os.Getenv("PEERS"))
+	if err != nil {
+		log.Printf("Woops, error when connecting to client node\n")
+	}
+	args := &brpc.ConnectionRPC{"8000"}
+	var reply brpc.BlocksRPC
+	err = client.Call("NodeRPC.Peer", args, &reply)
+	var newConnection = new(PeerConnection)
+	newConnection.ID = os.Getenv("PEERS")
+	newConnection.conn = client
+	connections = append(connections, *newConnection)*/
+
+
 	fs := http.FileServer(http.Dir("../public"))
 	http.Handle("/", fs)
 
