@@ -31,15 +31,12 @@ func (n *NodeRPC) Peer(args *ConnectionRPC, reply *BlocksRPC) error {
 	return nil
 }
 
-
 func (n *NodeRPC) DeliverMessage(args *MessageRPC, reply *int) error {
 	// Upon reception of message by a client
 	// MINEUR-03
 	// CLIENT-07
 	// To implement
 	log.Printf("NODE-RPC : I received %s from %s\n", args.Message, args.PeerID)
-	//node.ReceiveMessage()
-
 	return nil
 }
 

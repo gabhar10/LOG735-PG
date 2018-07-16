@@ -20,8 +20,7 @@ COPY src/ /root/go/src/LOG735-PG/src
 COPY chat/ /root/go/src/LOG735-PG/chat
 
 WORKDIR /root/go/src/LOG735-PG/chat
-CMD sleep 6000
-#RUN go build main.go
 
-#RUN sleep 6000
-#CMD /root/go/src/LOG735-PG/chat/main
+RUN go build main.go
+
+CMD /root/go/src/LOG735-PG/chat/main

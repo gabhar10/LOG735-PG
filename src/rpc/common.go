@@ -47,4 +47,3 @@ func ConnectTo(port string) (*rpc.Client, error) {
 	}
 	return c, err
 }
-

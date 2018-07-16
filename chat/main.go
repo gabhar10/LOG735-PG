@@ -1,56 +1,45 @@
-package chat
+package main
 
 import (
-	"github.com/gorilla/websocket"
-	"net/http"
-	"log"
-	"LOG735-PG/src/node"
 	brpc "LOG735-PG/src/rpc"
-	"LOG735-PG/chat/ui"
-	"time"
+	"fmt"
+	"log"
+	"net/http"
+
 	"os"
+	"time"
+
+	"github.com/gorilla/websocket"
 )
+
+const httpPort = "8000"
 
 var clients = make(map[*websocket.Conn]bool)
 var broadcast = make(chan Message)
 var upgrader = websocket.Upgrader{}
 var rpcHandler *brpc.NodeRPC
 
+// Message represets a client message in JSON format
 type Message struct {
-	Email		string `json:"email"`
-	Username	string `json:"username"`
-	Message		string `json:"message"`
+	Email    string `json:"email"`
+	Username string `json:"username"`
+	Message  string `json:"message"`
 }
-
-
 
 func main() {
 	log.Printf("my peer is " + os.Getenv("PEERS"))
 
-
-	var node node.Node
-	node = ui.NewUiNode("8001", os.Getenv("PEERS"))
-	err := node.SetupRPC("8001")
-	if err != nil {
-		log.Fatal("RPC setup error:", err)
-	}
-	err = node.Peer()
-	if err != nil {
-		log.Fatal("Peering error:", err)
-	}
-
-	fs := http.FileServer(http.Dir("../public"))
+	fs := http.FileServer(http.Dir("public"))
 	http.Handle("/", fs)
-
 
 	http.HandleFunc("/ws", handleConnections)
 
 	go handleMessages()
 
-	log.Println("http server started on :8000")
+	log.Printf("http server started on %s\n", httpPort)
 
 	go func() {
-		err := http.ListenAndServe(":8000", nil)
+		err := http.ListenAndServe(fmt.Sprintf(":%s", httpPort), nil)
 		if err != nil {
 			log.Fatal("ListenAndServe: ", err)
 		}
@@ -59,13 +48,11 @@ func main() {
 	for {
 		time.Sleep(time.Hour)
 	}
-
 }
 
-
-func handleConnections(w http.ResponseWriter, r *http.Request){
+func handleConnections(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
-	if err != nil{
+	if err != nil {
 		log.Fatal(err)
 	}
 
@@ -73,11 +60,11 @@ func handleConnections(w http.ResponseWriter, r *http.Request){
 
 	clients[ws] = true
 
-	for{
+	for {
 		var msg Message
 
 		err := ws.ReadJSON(&msg)
-		if err != nil{
+		if err != nil {
 			log.Printf("error: %v", err)
 			delete(clients, ws)
 			break
@@ -86,12 +73,12 @@ func handleConnections(w http.ResponseWriter, r *http.Request){
 	}
 }
 
-func handleMessages(){
-	for{
-		msg := <- broadcast
-		for client := range clients{
+func handleMessages() {
+	for {
+		msg := <-broadcast
+		for client := range clients {
 			err := client.WriteJSON(msg)
-			if err != nil{
+			if err != nil {
 				log.Printf("error: %v", err)
 				client.Close()
 				delete(clients, client)

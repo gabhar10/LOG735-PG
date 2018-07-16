@@ -52,7 +52,7 @@ while len(USED_PORTS) < args.num_miners + args.num_clients:
         node = {'ID': 'C%d' % port, 'port': port, 'role': 'client', 'peers': []}
         CLIENTS.append(node)
         USED_PORTS.append(port)
-		
+
 # Fully connect anchor-miners together
 for i in ANCHOR_MINERS:
     for j in ANCHOR_MINERS:
@@ -108,9 +108,8 @@ for i in MINERS:
 
 # Add chat container
 services += 'node-8001:\n  image: log735-chat:latest\n  container_name: chat_app\n  environment:\n\
-    - PEERS=%s\n    - ROLE=chat_interface\n    - PORT=8001\n  networks:\n    - blockchain\n' \
+    - PEERS=%s\n    - ROLE=chat_interface\n    - PORT=8001\n  ports:\n    - \'8000:8000\'\n    - \'8001:8001\'\n  networks:\n    - blockchain\n' \
 % (CLIENTS[1]['port'])
-
 
 # Write docker-compose.yaml
 with open('docker-compose.template', 'r') as f:
@@ -123,12 +122,7 @@ with open('docker-compose.yaml', 'w+') as f:
 
 # Write index.html
 with open('../webapp/scripts/index.html.template', 'r') as f:
-    content = f.read()
-	
-# Write chat application environment variables
-with open('../chat/environment_variable.list', 'w') as f:
-	f.write('PEERS=%s' % CLIENTS[1]['port'])
-	
+    content = f.read()	
 
 content = content.replace('%VERTICES%', ''.join(''+line for line in visjs_vertices[:-2].splitlines(True)))
 content = content.replace('%EDGES%', ''.join(''+line for line in visjs_edges[:-2].splitlines(True)))

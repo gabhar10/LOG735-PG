@@ -14,11 +14,11 @@ import (
 
 type (
 	Client struct {
-		ID          string       // i.e. Run-time port associated to container
-		blocks      []node.Block // Can be a subset of the full chain
-		peers       []string     // Slice of IDs
-		rpcHandler  *brpc.NodeRPC
-		connections []PeerConnection
+		ID          string           // i.e. Run-time port associated to container
+		blocks      []node.Block     // Can be a subset of the full chain
+		peers       []string         // Slice of IDs
+		rpcHandler  *brpc.NodeRPC    // Handler for RPC requests
+		connections []PeerConnection // List of peer connections
 	}
 
 	PeerConnection struct {
@@ -56,6 +56,10 @@ func (c *Client) SetupRPC(port string) error {
 }
 
 func (c Client) ReceiveMessage(content string, hello time.Time) {
+
+}
+
+func (c Client) ReceiveBlock(block node.Block) {
 
 }
 
