@@ -20,7 +20,7 @@ type Miner struct {
 	blocks            []node.Block // MINEUR-07
 	peers             []string     // Slice of IDs
 	rpcHandler        *brpc.NodeRPC
-	incomingMsgChan   chan Message
+	incomingMsgChan   chan node.Message
 	incomingBlockChan chan node.Block
 	quit              chan bool
 	mutex             sync.Mutex
@@ -116,7 +116,7 @@ func (m *Miner) CreateBlock() node.Block {
 }
 
 func (m Miner) ReceiveMessage(content string, temps time.Time) {
-	m.incomingMsgChan <- Message{content, temps}
+	m.incomingMsgChan <- node.Message{content, temps}
 }
 
 func (m Miner) ReceiveBlock(block node.Block) {

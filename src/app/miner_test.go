@@ -5,8 +5,10 @@ import (
 	brpc "LOG735-PG/src/rpc"
 	"crypto/sha256"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestMiner_mining(t *testing.T) {
@@ -62,7 +64,7 @@ func TestMiner_findingNounce(t *testing.T) {
 		blocks            []node.Block
 		peers             []string
 		rpcHandler        *brpc.NodeRPC
-		incomingMsgChan   chan Message
+		incomingMsgChan   chan node.Message
 		incomingBlockChan chan node.Block
 		quit              chan bool
 		mutex             sync.Mutex
@@ -84,14 +86,22 @@ func TestMiner_findingNounce(t *testing.T) {
 				make([]node.Block, 2),
 				make([]string, 1),
 				nil,
-				make(chan Message, 100),
+				make(chan node.Message, 100),
 				make(chan node.Block, 10),
 				make(chan bool),
 				sync.Mutex{},
 			},
 			args{
-				
-			}
+				func() *node.Block {
+					messages := [node.BlockSize]node.Message{}
+					for i := 0; i < node.BlockSize; i++ {
+						messages[i] = node.Message{"Salut!", time.Date(2018, 7, 15, 8, 0, 0, 0, time.UTC)}
+					}
+					return &node.Block{Header: node.Header{PreviousBlock: [sha256.Size]byte{}, Date: time.Now()}, Messages: messages}
+				}(),
+			},
+			[sha256.Size]byte{},
+			false,
 		},
 	}
 	for _, tt := range tests {
@@ -111,8 +121,11 @@ func TestMiner_findingNounce(t *testing.T) {
 				t.Errorf("Miner.findingNounce() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Miner.findingNounce() = %v, want %v", got, tt.want)
+			firstCharacters := string(got[:node.MiningDifficulty])
+
+			if strings.Count(firstCharacters, "0") != node.MiningDifficulty {
+				t.Errorf("first %v characters are not zeros", node.MiningDifficulty)
+				return
 			}
 		})
 	}
@@ -135,8 +148,31 @@ func TestMiner_CreateBlock(t *testing.T) {
 		want   node.Block
 	}{
 		// TODO: Add test cases.
+		{
+			"sunny day",
+			fields{
+				"1",
+				make([]node.Block, 2),
+				make([]string, 1),
+				nil,
+				make(chan node.Message, 100),
+				make(chan node.Block, 10),
+				make(chan bool),
+				sync.Mutex{},
+			},
+			func() node.Block {
+				messages := [node.BlockSize]node.Message{}
+				for i := 0; i < node.BlockSize; i++ {
+					messages[i] = node.Message{"Salut!", time.Date(2018, 7, 15, 8, 0, 0, 0, time.UTC)}
+				}
+				return node.Block{Messages: messages}
+			}(),
+		},
 	}
 	for _, tt := range tests {
+		for i := 0; i < node.BlockSize; i++ {
+			tt.fields.incomingMsgChan <- node.Message{"Salut!", time.Date(2018, 7, 15, 8, 0, 0, 0, time.UTC)}
+		}
 		t.Run(tt.name, func(t *testing.T) {
 			m := &Miner{
 				ID:                tt.fields.ID,
@@ -148,7 +184,8 @@ func TestMiner_CreateBlock(t *testing.T) {
 				quit:              tt.fields.quit,
 				mutex:             tt.fields.mutex,
 			}
-			if got := m.CreateBlock(); !reflect.DeepEqual(got, tt.want) {
+			got := m.CreateBlock()
+			if !reflect.DeepEqual(got.Messages, tt.want.Messages) {
 				t.Errorf("Miner.CreateBlock() = %v, want %v", got, tt.want)
 			}
 		})
