@@ -14,5 +14,10 @@ type Header struct {
 
 type Block struct {
 	Header   Header
-	Messages [BlockSize]string
+	Messages [BlockSize]Message
+}
+
+type Message struct {
+	Content string
+	Time    time.Time
 }

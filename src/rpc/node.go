@@ -37,9 +37,11 @@ func (n *NodeRPC) DeliverMessage(args *MessageRPC, reply *int) error {
 	// MINEUR-03
 	// CLIENT-07
 	// To implement
+
 	log.Printf("NODE-RPC : I received %s from %s\n", args.Message, args.PeerID)
 	//node.ReceiveMessage()
 
+	n.Node.ReceiveMessage(args.Message, args.Time)
 	return nil
 }
 
@@ -48,6 +50,7 @@ func (n *NodeRPC) DeliverBlock(args *BlocksRPC, reply *int) error {
 	// To implement
 	// MINEUR-09
 	// MINEUR-11
+	n.Node.ReceiveBlock(args.Blocks[len(args.Blocks)-1])
 	// If block is valid, halt current work to find block and start a new one including this new one
 	return nil
 }

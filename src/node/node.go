@@ -9,4 +9,6 @@ type Node interface {
 	Peer() error
 	GetBlocks() []Block
 	ReceiveMessage(string, time.Time)
+	ReceiveBlock(Block)
+	Start()
 }
