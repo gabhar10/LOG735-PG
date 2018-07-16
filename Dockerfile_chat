@@ -1,0 +1,26 @@
+FROM centos:latest
+
+# Install dependencies
+RUN yum -y install wget
+RUN wget https://dl.google.com/go/go1.10.3.linux-amd64.tar.gz
+RUN tar -xzf go1.10.3.linux-amd64.tar.gz
+RUN mv go /usr/local
+RUN yum -y install git
+
+# Setup golang environment variables
+ENV GOROOT=/usr/local/go
+ENV GOPATH=/root/go
+ENV PATH=$GOPATH/bin:$GOROOT/bin:$PATH
+
+# Install websocket dependency
+RUN go get github.com/gorilla/websocket
+
+# Add source code 
+COPY src/ /root/go/src/LOG735-PG/src
+COPY chat/ /root/go/src/LOG735-PG/chat
+
+WORKDIR /root/go/src/LOG735-PG/chat
+
+RUN go build main.go
+
+CMD /root/go/src/LOG735-PG/chat/main

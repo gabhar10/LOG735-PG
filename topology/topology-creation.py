@@ -70,6 +70,8 @@ for i in MINERS:
 # Connect clients to a random anchor
 for i in CLIENTS:
     i['peers'].append(random.choice(ANCHOR_MINERS)['port'])
+	#for anchor in ANCHOR_MINERS:
+	#	i['peers'].append(anchor['port'])
 
 # Randomly select malicious miners
 for i in random.sample(MINERS, args.num_mal_miners):
@@ -104,6 +106,11 @@ for i in MINERS:
     for x in i['peers']:
         visjs_edges += '        {from: %s, to: %s},\n' % (i['port'], x)
 
+# Add chat container
+services += 'node-8001:\n  image: log735-chat:latest\n  container_name: chat_app\n  environment:\n\
+    - PEERS=%s\n    - ROLE=chat_interface\n    - PORT=8001\n  ports:\n    - \'8000:8000\'\n    - \'8001:8001\'\n  networks:\n    - blockchain\n' \
+% (CLIENTS[1]['port'])
+
 # Write docker-compose.yaml
 with open('docker-compose.template', 'r') as f:
     content = f.read()
@@ -115,7 +122,7 @@ with open('docker-compose.yaml', 'w+') as f:
 
 # Write index.html
 with open('../webapp/scripts/index.html.template', 'r') as f:
-    content = f.read()
+    content = f.read()	
 
 content = content.replace('%VERTICES%', ''.join(''+line for line in visjs_vertices[:-2].splitlines(True)))
 content = content.replace('%EDGES%', ''.join(''+line for line in visjs_edges[:-2].splitlines(True)))
