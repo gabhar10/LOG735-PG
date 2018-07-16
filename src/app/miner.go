@@ -16,14 +16,14 @@ import (
 )
 
 type Miner struct {
-	ID                string       // i.e. Run-time port associated to container
-	blocks            []node.Block // MINEUR-07
-	peers             []string     // Slice of IDs
-	rpcHandler        *brpc.NodeRPC
-	incomingMsgChan   chan node.Message
-	incomingBlockChan chan node.Block
-	quit              chan bool
-	mutex             sync.Mutex
+	ID                string       		// i.e. Run-time port associated to container
+	blocks            []node.Block 		// MINEUR-07
+	peers             []string     		// Slice of IDs
+	rpcHandler        *brpc.NodeRPC 	// Handler for RPC requests
+	incomingMsgChan   chan node.Message // Channel for incoming messages from other clients
+	incomingBlockChan chan node.Block 	// Channel for incoming blocks from other miners
+	quit              chan bool			// Channel to cancel mining operations
+	mutex             sync.Mutex		// Mutex for synchronization between routines
 }
 
 func NewMiner(port, peers string) node.Node {
@@ -32,8 +32,8 @@ func NewMiner(port, peers string) node.Node {
 		make([]node.Block, node.MinBlocksReturnSize),
 		strings.Split(peers, " "),
 		new(brpc.NodeRPC),
-		make(chan node.Message, 100),
-		make(chan node.Block, 10),
+		make(chan node.Message, node.MessagesChannelSize),
+		make(chan node.Block, node.BlocksChannelSize),
 		make(chan bool),
 		sync.Mutex{},
 	}
@@ -131,7 +131,7 @@ func (m *Miner) mining() {
 	hashedHeader, err := m.findingNounce(&block)
 
 	if err != nil {
-		fmt.Println("Nounce : ", block.Header.Nounce)
+		log.Println("Nounce : ", block.Header.Nounce)
 		block.Header.Hash = hashedHeader
 		m.blocks = append(m.blocks, block)
 		m.mutex.Unlock()

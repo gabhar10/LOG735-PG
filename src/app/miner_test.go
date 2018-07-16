@@ -52,8 +52,11 @@ func TestMiner_mining(t *testing.T) {
 				quit:              tt.fields.quit,
 				mutex:             tt.fields.mutex,
 			}
+			beforeSize := len(m.blocks)
 			m.mining()
-
+			if beforeSize == len(m.blocks) {
+				t.Errorf("mining() did not create a new block")
+			}
 		})
 	}
 }

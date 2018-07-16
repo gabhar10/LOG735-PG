@@ -67,10 +67,6 @@ func (c Client) Peer() error {
 			return fmt.Errorf("Blocks are not defined")
 		}
 		log.Printf("Successfully peered with node-%s\n", peer)
-		log.Printf("CLIENT : Sending message to peer %s\n", peer)
-		var reply2 int
-		message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, "Bonjour", time.Now()}
-		client.Call("NodeRPC.DeliverMessage", message, &reply2)
 	}
 
 	return nil
