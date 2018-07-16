@@ -9,19 +9,18 @@ RUN yum -y install git
 
 # Setup golang environment variables
 ENV GOROOT=/usr/local/go
-ENV GOPATH=/root/go
 ENV PATH=$GOPATH/bin:$GOROOT/bin:$PATH
 
 # Install websocket dependency
 RUN go get github.com/gorilla/websocket
 
 # Add source code 
-COPY src/ /root/go/src/LOG735-PG/src
-COPY chat/ /root/go/src/LOG735-PG/chat
+RUN install -d /usr/local/go/src/LOG735-PG/src
+COPY main/ /usr/local/go/src/LOG735-PG/src
+RUN mkdir /chat
+COPY . /chat
 
-WORKDIR /root/go/src/LOG735-PG/chat
-CMD sleep 6000
-#RUN go build main.go
-
-#RUN sleep 6000
-#CMD /root/go/src/LOG735-PG/chat/main
+# Compile source code
+WORKDIR /chat/main
+RUN go build main.go
+CMD ./main

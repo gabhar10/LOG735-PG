@@ -107,8 +107,8 @@ for i in MINERS:
         visjs_edges += '        {from: %s, to: %s},\n' % (i['port'], x)
 
 # Add chat container
-services += 'CHAT_APP:\n  image: log735:latest\n  container_name: chat_app\n  environment:\n\
-    - PEERS=%s\n    - ROLE=chat_interface\n    - PORT=8000\n  networks:\n    - blockchain\n' \
+services += 'node-8001:\n  image: log735-chat:latest\n  container_name: chat_app\n  environment:\n\
+    - PEERS=%s\n    - ROLE=chat_interface\n    - PORT=8001\n  networks:\n    - blockchain\n' \
 % (CLIENTS[1]['port'])
 
 
