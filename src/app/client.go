@@ -1,20 +1,21 @@
 package app
 
 import (
-	"strings"
-	brpc "LOG735-PG/src/rpc"
 	"LOG735-PG/src/node"
-	"net"
-	"net/rpc"
-	"net/http"
-	"log"
+	brpc "LOG735-PG/src/rpc"
 	"fmt"
+	"log"
+	"net"
+	"net/http"
+	"net/rpc"
+	"strings"
+	"time"
 )
 
 type Client struct {
-	ID string // i.e. Run-time port associated to container
-	blocks []node.Block // Can be a subset of the full chain
-	peers []string // Slice of IDs
+	ID         string       // i.e. Run-time port associated to container
+	blocks     []node.Block // Can be a subset of the full chain
+	peers      []string     // Slice of IDs
 	rpcHandler *brpc.NodeRPC
 }
 
@@ -29,6 +30,10 @@ func NewClient(port, peers string) node.Node {
 	return c
 }
 
+func (c *Client) Start() {
+
+}
+
 func (c *Client) SetupRPC(port string) error {
 	rpc.Register(c.rpcHandler)
 	rpc.HandleHTTP()
@@ -39,6 +44,10 @@ func (c *Client) SetupRPC(port string) error {
 	log.Printf("Listening on TCP port %s\n", port)
 	go http.Serve(l, nil)
 	return nil
+}
+
+func (c Client) ReceiveMessage(content string, hello time.Time) {
+
 }
 
 func (c Client) Peer() error {
@@ -82,4 +91,8 @@ func (c Client) Disconnect() error {
 	// CLIENT-05
 	// To implement
 	return nil
+}
+
+func (c Client) ReceiveBlock(block node.Block) {
+
 }

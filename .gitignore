@@ -1,4 +1,5 @@
 docker-compose.yaml
 webapp/frontend/index.html
 webapp/docker-compose.logs
+src/app/*.test
 .idea

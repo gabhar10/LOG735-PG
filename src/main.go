@@ -1,16 +1,16 @@
 package main
 
 import (
-	"os"
-	"log"
-	"time"
 	"LOG735-PG/src/app"
 	"LOG735-PG/src/node"
+	"log"
+	"os"
+	"time"
 )
 
 func main() {
 	// Check for empty environment variables
-	for _, role := range []string {"ROLE", "PORT", "PEERS"} {
+	for _, role := range []string{"ROLE", "PORT", "PEERS"} {
 		env := os.Getenv(role)
 		if env == "" {
 			log.Fatalf("Environment variable %s is empty\n", role)
