@@ -22,7 +22,7 @@ func main() {
 	role := os.Getenv("ROLE")
 	switch role {
 	case "client":
-		node = app.NewClient(os.Getenv("PORT"), os.Getenv("PEERS"))
+		node = app.NewClient(os.Getenv("PORT"), os.Getenv("PEERS"), nil)
 	case "miner":
 		node = app.NewMiner(os.Getenv("PORT"), os.Getenv("PEERS"))
 	default:

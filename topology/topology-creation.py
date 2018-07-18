@@ -83,7 +83,7 @@ visjs_vertices = ''
 visjs_edges = ''
 for i in CLIENTS:
     services += '%s:\n  image: log735:latest\n  container_name: node-%s\n  environment:\n\
-    - PEERS=%s\n    - ROLE=client\n    - PORT=%s\n  networks:\n    - blockchain\n' \
+    - PEERS=8001 %s\n    - ROLE=client\n    - PORT=%s\n  networks:\n    - blockchain\n' \
                 % (i['ID'], i['port'], " ".join(str(x) for x in i['peers']), i['port'])
     visjs_vertices += '        {id: %s, label: \'%s\'},\n' % (i['port'], i['ID'])
 
@@ -107,8 +107,8 @@ for i in MINERS:
         visjs_edges += '        {from: %s, to: %s},\n' % (i['port'], x)
 
 # Add chat container
-services += 'node-8001:\n  image: log735-chat:latest\n  container_name: chat_app\n  environment:\n\
-    - PEERS=%s\n    - ROLE=chat_interface\n    - PORT=8001\n  networks:\n    - blockchain\n' \
+services += 'node-8001:\n  image: log735-chat:latest\n  container_name: chat_app\n  ports:\n    - 8000:8000\n  environment:\n\
+    - PEERS=%s\n    - ROLE=client\n    - PORT=8001\n  networks:\n    - blockchain\n' \
 % (CLIENTS[1]['port'])
 
 

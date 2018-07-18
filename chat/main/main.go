@@ -1,20 +1,18 @@
-package chat
+package main
 
 import (
 	"github.com/gorilla/websocket"
 	"net/http"
 	"log"
 	"LOG735-PG/src/node"
-	brpc "LOG735-PG/src/rpc"
-	"LOG735-PG/chat/ui"
+	"LOG735-PG/src/app"
 	"time"
 	"os"
 )
 
 var clients = make(map[*websocket.Conn]bool)
-var broadcast = make(chan Message)
+var broadcast = make(chan node.Message)
 var upgrader = websocket.Upgrader{}
-var rpcHandler *brpc.NodeRPC
 
 type Message struct {
 	Email		string `json:"email"`
@@ -29,7 +27,7 @@ func main() {
 
 
 	var node node.Node
-	node = ui.NewUiNode("8001", os.Getenv("PEERS"))
+	node = app.NewClient("8001", os.Getenv("PEERS"), broadcast)
 	err := node.SetupRPC("8001")
 	if err != nil {
 		log.Fatal("RPC setup error:", err)
@@ -74,23 +72,28 @@ func handleConnections(w http.ResponseWriter, r *http.Request){
 	clients[ws] = true
 
 	for{
-		var msg Message
-
+		var msg node.Message
 		err := ws.ReadJSON(&msg)
 		if err != nil{
 			log.Printf("error: %v", err)
 			delete(clients, ws)
 			break
 		}
+		log.Printf("no problem\n")
 		broadcast <- msg
 	}
 }
 
 func handleMessages(){
+	var msg node.Message
+	var jsonMessage Message
 	for{
-		msg := <- broadcast
+		msg = <- broadcast
+		jsonMessage.Message = msg.Content
+		log.Printf("UI received message $s\n", jsonMessage.Message)
 		for client := range clients{
-			err := client.WriteJSON(msg)
+			log.Printf("sending message...\n")
+			err := client.WriteJSON(jsonMessage)
 			if err != nil{
 				log.Printf("error: %v", err)
 				client.Close()

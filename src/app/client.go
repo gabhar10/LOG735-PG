@@ -19,6 +19,7 @@ type (
 		peers      []string     // Slice of IDs
 		rpcHandler *brpc.NodeRPC
 		connections []PeerConnection
+		uiChannel chan node.Message
 	}
 
 	PeerConnection struct {
@@ -27,13 +28,14 @@ type (
 	}
 )
 
-func NewClient(port, peers string) node.Node {
+func NewClient(port, peers string, uiChannel chan node.Message) node.Node {
 	c := &Client{
 		port,
 		make([]node.Block, node.MinBlocksReturnSize),
 		strings.Split(peers, " "),
 		new(brpc.NodeRPC),
 		make([]PeerConnection,0),
+		uiChannel,
 	}
 	c.rpcHandler.Node = c
 	return c
@@ -55,8 +57,9 @@ func (c *Client) SetupRPC(port string) error {
 	return nil
 }
 
-func (c Client) ReceiveMessage(content string, hello time.Time) {
-
+func (c Client) ReceiveMessage(content string, temps time.Time) {
+	log.Printf("received %s, sending to chat application...\n", content)
+	c.uiChannel <- node.Message{content, temps}
 }
 
 func (c Client) Peer() error {
@@ -123,6 +126,7 @@ func (c Client) StartMessageLoop() error{
 
 	return nil
 }
+
 
 func (c Client) ReceiveBlock(block node.Block) {
 
