@@ -57,9 +57,9 @@ func (c *Client) SetupRPC(port string) error {
 	return nil
 }
 
-func (c Client) ReceiveMessage(content string, temps time.Time) {
+func (c Client) ReceiveMessage(content string, temps time.Time, peer string) {
 	log.Printf("received %s, sending to chat application...\n", content)
-	c.uiChannel <- node.Message{content, temps}
+	c.uiChannel <- node.Message{peer, content, temps}
 }
 
 func (c Client) Peer() error {

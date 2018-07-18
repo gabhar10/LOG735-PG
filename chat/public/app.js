@@ -16,7 +16,9 @@ new Vue({
         this.ws.addEventListener('message', function(e) {
             var msg = JSON.parse(e.data);
             self.chatContent += '<div class="chip">'
-                + msg.message + '<br/>'; // Parse emojis
+                + msg.peer
+                + '</div>'
+                + emojione.toImage(msg.message) + '<br/>'; // Parse emojis
 
             var element = document.getElementById('chat-messages');
             element.scrollTop = element.scrollHeight; // Auto scroll to the bottom

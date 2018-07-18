@@ -37,11 +37,8 @@ func (n *NodeRPC) DeliverMessage(args *MessageRPC, reply *int) error {
 	// MINEUR-03
 	// CLIENT-07
 	// To implement
-
 	log.Printf("NODE-RPC : I received %s from %s\n", args.Message, args.PeerID)
-	//node.ReceiveMessage()
-
-	n.Node.ReceiveMessage(args.Message, args.Time)
+	n.Node.ReceiveMessage(args.Message, args.Time, args.PeerID)
 	return nil
 }
 

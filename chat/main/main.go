@@ -16,7 +16,7 @@ var upgrader = websocket.Upgrader{}
 
 type Message struct {
 	Email		string `json:"email"`
-	Username	string `json:"username"`
+	Peer		string `json:"peer"`
 	Message		string `json:"message"`
 }
 
@@ -24,7 +24,6 @@ type Message struct {
 
 func main() {
 	log.Printf("my peer is " + os.Getenv("PEERS"))
-
 
 	var node node.Node
 	node = app.NewClient("8001", os.Getenv("PEERS"), broadcast)
@@ -90,6 +89,7 @@ func handleMessages(){
 	for{
 		msg = <- broadcast
 		jsonMessage.Message = msg.Content
+		jsonMessage.Peer = msg.Peer
 		log.Printf("UI received message $s\n", jsonMessage.Message)
 		for client := range clients{
 			log.Printf("sending message...\n")

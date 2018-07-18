@@ -8,7 +8,7 @@ type Node interface {
 	SetupRPC(string) error
 	Peer() error
 	GetBlocks() []Block
-	ReceiveMessage(string, time.Time)
+	ReceiveMessage(string, time.Time, string)
 	ReceiveBlock(Block)
 	Start()
 }
