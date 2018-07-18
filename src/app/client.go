@@ -57,10 +57,6 @@ func (c *Client) SetupRPC(port string) error {
 	return nil
 }
 
-func (c Client) ReceiveMessage(content string, temps time.Time, peer string) {
-	log.Printf("received %s, sending to chat application...\n", content)
-	c.uiChannel <- node.Message{peer, content, temps}
-}
 
 func (c Client) Peer() error {
 	for _, peer := range c.peers {
@@ -112,6 +108,11 @@ func (c Client) Disconnect() error {
 	return nil
 }
 
+func (c Client) ReceiveMessage(content string, temps time.Time, peer string) {
+	log.Printf("received %s, sending to chat application...\n", content)
+	c.uiChannel <- node.Message{peer, content, temps}
+}
+
 func (c Client) StartMessageLoop() error{
 	log.Printf("Starting message loop")
 	for{
@@ -121,6 +122,7 @@ func (c Client) StartMessageLoop() error{
 			var reply int
 			message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, "Bonjour", time.Now()}
 			conn.conn.Call("NodeRPC.DeliverMessage", message, &reply)
+			//c.uiChannel <- node.Message{c.ID, "Bonjour", time.Now()}
 		}
 	}
 
@@ -129,5 +131,5 @@ func (c Client) StartMessageLoop() error{
 
 
 func (c Client) ReceiveBlock(block node.Block) {
-
+	// Do nothing
 }

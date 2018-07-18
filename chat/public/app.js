@@ -29,9 +29,8 @@ new Vue({
             if (this.newMsg != '') {
                 this.ws.send(
                     JSON.stringify({
-                            email: this.email,
-                            username: this.username,
-                            message: $('<p>').html(this.newMsg).text() // Strip out html
+                            message: $('<p>').html(this.newMsg).text(),
+                            peer: "ui",// Strip out html
                         }
                     ));
                 this.newMsg = ''; // Reset newMsg

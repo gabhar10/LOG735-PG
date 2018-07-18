@@ -11,11 +11,10 @@ import (
 )
 
 var clients = make(map[*websocket.Conn]bool)
-var broadcast = make(chan node.Message)
+var uiChannel = make(chan node.Message)
 var upgrader = websocket.Upgrader{}
 
 type Message struct {
-	Email		string `json:"email"`
 	Peer		string `json:"peer"`
 	Message		string `json:"message"`
 }
@@ -26,7 +25,7 @@ func main() {
 	log.Printf("my peer is " + os.Getenv("PEERS"))
 
 	var node node.Node
-	node = app.NewClient("8001", os.Getenv("PEERS"), broadcast)
+	node = app.NewClient("8001", os.Getenv("PEERS"), uiChannel)
 	err := node.SetupRPC("8001")
 	if err != nil {
 		log.Fatal("RPC setup error:", err)
@@ -72,14 +71,16 @@ func handleConnections(w http.ResponseWriter, r *http.Request){
 
 	for{
 		var msg node.Message
-		err := ws.ReadJSON(&msg)
+		var appMsg Message
+		err := ws.ReadJSON(&appMsg)
+		msg.Content = appMsg.Message
+		msg.Peer = appMsg.Peer
 		if err != nil{
 			log.Printf("error: %v", err)
 			delete(clients, ws)
 			break
 		}
-		log.Printf("no problem\n")
-		broadcast <- msg
+		uiChannel <- msg
 	}
 }
 
@@ -87,7 +88,7 @@ func handleMessages(){
 	var msg node.Message
 	var jsonMessage Message
 	for{
-		msg = <- broadcast
+		msg = <- uiChannel
 		jsonMessage.Message = msg.Content
 		jsonMessage.Peer = msg.Peer
 		log.Printf("UI received message $s\n", jsonMessage.Message)
