@@ -20,6 +20,7 @@ type (
 		rpcHandler *brpc.NodeRPC
 		connections []PeerConnection
 		uiChannel chan node.Message
+		nodeChannel chan node.Message
 	}
 
 	PeerConnection struct {
@@ -28,7 +29,7 @@ type (
 	}
 )
 
-func NewClient(port, peers string, uiChannel chan node.Message) node.Node {
+func NewClient(port, peers string, uiChannel chan node.Message, nodeChannel chan node.Message) node.Node {
 	c := &Client{
 		port,
 		make([]node.Block, node.MinBlocksReturnSize),
@@ -36,6 +37,7 @@ func NewClient(port, peers string, uiChannel chan node.Message) node.Node {
 		new(brpc.NodeRPC),
 		make([]PeerConnection,0),
 		uiChannel,
+		nodeChannel,
 	}
 	c.rpcHandler.Node = c
 	return c
@@ -109,8 +111,21 @@ func (c Client) Disconnect() error {
 }
 
 func (c Client) ReceiveMessage(content string, temps time.Time, peer string) {
-	log.Printf("received %s, sending to chat application...\n", content)
 	c.uiChannel <- node.Message{peer, content, temps}
+}
+
+func (c Client) HandleUiMessage() error{
+	for{
+		var msg node.Message
+		msg = <- c.nodeChannel
+		for _, conn := range c.connections {
+			time.Sleep(5 * time.Second)
+			log.Printf("CLIENT : Sending %s to %s\n", msg.Content,conn.ID)
+			var reply int
+			message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, msg.Content, time.Now()}
+			conn.conn.Call("NodeRPC.DeliverMessage", message, &reply)
+		}
+	}
 }
 
 func (c Client) StartMessageLoop() error{
@@ -118,11 +133,10 @@ func (c Client) StartMessageLoop() error{
 	for{
 		for _, conn := range c.connections {
 			time.Sleep(5 * time.Second)
-			log.Printf("CLIENT : Sending message to %s\n", conn.ID)
+			log.Printf("CLIENT : Sending bonjour to %s\n", conn.ID)
 			var reply int
 			message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, "Bonjour", time.Now()}
 			conn.conn.Call("NodeRPC.DeliverMessage", message, &reply)
-			//c.uiChannel <- node.Message{c.ID, "Bonjour", time.Now()}
 		}
 	}
 

@@ -12,6 +12,7 @@ import (
 
 var clients = make(map[*websocket.Conn]bool)
 var uiChannel = make(chan node.Message)
+var nodeChannel = make(chan node.Message)
 var upgrader = websocket.Upgrader{}
 
 type Message struct {
@@ -25,7 +26,7 @@ func main() {
 	log.Printf("my peer is " + os.Getenv("PEERS"))
 
 	var node node.Node
-	node = app.NewClient("8001", os.Getenv("PEERS"), uiChannel)
+	node = app.NewClient("8001", os.Getenv("PEERS"), uiChannel, nodeChannel)
 	err := node.SetupRPC("8001")
 	if err != nil {
 		log.Fatal("RPC setup error:", err)
@@ -81,6 +82,7 @@ func handleConnections(w http.ResponseWriter, r *http.Request){
 			break
 		}
 		uiChannel <- msg
+		nodeChannel <- msg
 	}
 }
 
