@@ -80,11 +80,13 @@ func (c Client) Peer() error {
 		newConnection.ID = peer
 		newConnection.conn = client
 		c.connections = append(c.connections, *newConnection)
+		log.Printf("Successfully peered with node-%s\n", peer)
 	}
 
 
 	// start trafic generation
 	go c.StartMessageLoop()
+	go c.HandleUiMessage()
 
 	return nil
 }
@@ -111,32 +113,38 @@ func (c Client) Disconnect() error {
 }
 
 func (c Client) ReceiveMessage(content string, temps time.Time, peer string) {
-	c.uiChannel <- node.Message{peer, content, temps}
+	if c.uiChannel != nil {
+		c.uiChannel <- node.Message{peer, content, temps}
+	}
 }
 
 func (c Client) HandleUiMessage() error{
-	for{
-		var msg node.Message
-		msg = <- c.nodeChannel
-		for _, conn := range c.connections {
-			time.Sleep(5 * time.Second)
-			log.Printf("CLIENT : Sending %s to %s\n", msg.Content,conn.ID)
-			var reply int
-			message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, msg.Content, time.Now()}
-			conn.conn.Call("NodeRPC.DeliverMessage", message, &reply)
+	if c.nodeChannel != nil {
+		for {
+			var msg node.Message
+			msg = <-c.nodeChannel
+			for _, conn := range c.connections {
+				var reply int
+				message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, msg.Content, time.Now()}
+				conn.conn.Call("NodeRPC.DeliverMessage", message, &reply)
+			}
 		}
+		log.Printf("Ending loop...\n")
 	}
+	return nil
 }
 
 func (c Client) StartMessageLoop() error{
 	log.Printf("Starting message loop")
 	for{
+		time.Sleep(5 * time.Second)
 		for _, conn := range c.connections {
-			time.Sleep(5 * time.Second)
-			log.Printf("CLIENT : Sending bonjour to %s\n", conn.ID)
 			var reply int
 			message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, "Bonjour", time.Now()}
 			conn.conn.Call("NodeRPC.DeliverMessage", message, &reply)
+		}
+		if c.nodeChannel != nil {
+			c.uiChannel <- node.Message{c.ID, "Bonjour", time.Now()}
 		}
 	}
 

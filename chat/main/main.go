@@ -93,9 +93,7 @@ func handleMessages(){
 		msg = <- uiChannel
 		jsonMessage.Message = msg.Content
 		jsonMessage.Peer = msg.Peer
-		log.Printf("UI received message $s\n", jsonMessage.Message)
 		for client := range clients{
-			log.Printf("sending message...\n")
 			err := client.WriteJSON(jsonMessage)
 			if err != nil{
 				log.Printf("error: %v", err)
