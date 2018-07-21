@@ -20,9 +20,10 @@ type Message struct {
 	Message		string `json:"message"`
 }
 
-
-
 func main() {
+
+
+
 	log.Printf("my peer is " + os.Getenv("PEERS"))
 
 	var node node.Node
@@ -38,7 +39,6 @@ func main() {
 
 	fs := http.FileServer(http.Dir("../public"))
 	http.Handle("/", fs)
-
 
 	http.HandleFunc("/ws", handleConnections)
 
@@ -59,8 +59,8 @@ func main() {
 
 }
 
-
 func handleConnections(w http.ResponseWriter, r *http.Request){
+
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil{
 		log.Fatal(err)
@@ -69,6 +69,8 @@ func handleConnections(w http.ResponseWriter, r *http.Request){
 	defer ws.Close()
 
 	clients[ws] = true
+
+
 
 	for{
 		var msg node.Message

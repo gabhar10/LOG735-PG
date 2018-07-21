@@ -6,14 +6,14 @@ new Vue({
         newMsg: '', // Holds new messages to be sent to the server
         chatContent: '', // A running list of chat messages displayed on the screen
         email: null, // Email address used for grabbing an avatar
-        username: null, // Our username
+        pseudo: null, // Our username
         joined: false // True if email and username have been filled in
     },
     created: function() {
         var self = this;
         this.ws = new WebSocket('ws://' + window.location.host + '/ws');
-        this.joined = true;
         this.ws.addEventListener('message', function(e) {
+
             var msg = JSON.parse(e.data);
             self.chatContent += '<div class="chip">'
                 + msg.peer
@@ -30,22 +30,17 @@ new Vue({
                 this.ws.send(
                     JSON.stringify({
                             message: $('<p>').html(this.newMsg).text(),
-                            peer: "ui",// Strip out html
+                            peer: this.pseudo,// Strip out html
                         }
                     ));
                 this.newMsg = ''; // Reset newMsg
             }
         },
-        join: function () {
-            if (!this.email) {
-                Materialize.toast('You must enter an email', 2000);
+        set_pseudo: function () {
+            if (!this.pseudo) {
+                Materialize.toast('You must enter a name', 2000);
                 return
             }
-            if (!this.username) {
-                Materialize.toast('You must choose a username', 2000);
-                return
-            }
-            this.email = $('<p>').html(this.email).text();
             this.username = $('<p>').html(this.username).text();
             this.joined = true;
         },
