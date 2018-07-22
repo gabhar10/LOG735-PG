@@ -66,6 +66,7 @@
     var div = document.getElementById('dc-logs');
 
     ws.onmessage = function (ev) {
+        console.log(ev);
         if (ev.data == "update") {
              div.contentWindow.location.reload();
              div.scrollTop = div.scrollHeight;

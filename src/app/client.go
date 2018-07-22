@@ -24,8 +24,8 @@ type (
 	}
 
 	PeerConnection struct {
-		ID			string
-		conn		*rpc.Client
+		ID   string
+		conn *rpc.Client
 	}
 )
 
@@ -87,7 +87,6 @@ func (c Client) Peer() error {
 	// start trafic generation
 	go c.StartMessageLoop()
 	go c.HandleUiMessage()
-
 	return nil
 }
 

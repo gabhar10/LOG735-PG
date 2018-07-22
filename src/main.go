@@ -42,11 +42,6 @@ func main() {
 		log.Fatal("Peering error:", err)
 	}
 
-	// fmt.Println("Hello")
-
-	// miner := app.Miner{}
-	// miner.CreateBlock()
-
 	for {
 		time.Sleep(time.Hour)
 	}

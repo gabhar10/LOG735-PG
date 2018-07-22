@@ -14,7 +14,7 @@ ENV PATH=$GOPATH/bin:$GOROOT/bin:$PATH
 # Install websocket dependency
 RUN go get github.com/gorilla/websocket
 
-# Add source code 
+# Add source code
 RUN install -d /usr/local/go/src/LOG735-PG/src
 COPY src/ /usr/local/go/src/LOG735-PG/src
 RUN mkdir /chat

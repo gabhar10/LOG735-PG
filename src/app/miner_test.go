@@ -33,8 +33,8 @@ func TestMiner_mining(t *testing.T) {
 				make([]node.Block, 2),
 				make([]string, 1),
 				nil,
-				make(chan node.Message, 100),
-				make(chan node.Block, 10),
+				make(chan node.Message, node.MessagesChannelSize),
+				make(chan node.Block, node.BlocksChannelSize),
 				make(chan bool),
 				sync.Mutex{},
 			},
@@ -52,8 +52,21 @@ func TestMiner_mining(t *testing.T) {
 				quit:              tt.fields.quit,
 				mutex:             tt.fields.mutex,
 			}
-			m.mining()
 
+			// Send messages in go routine
+			go func() {
+				for i := 0; i < node.BlockSize; i++ {
+					m.incomingMsgChan <- node.Message{
+						Content: "Salut!",
+						Time:    time.Date(2018, 7, 15, 8, 0, 0, 0, time.UTC)}
+				}
+			}()
+
+			beforeSize := len(m.blocks)
+			m.mining()
+			if beforeSize == len(m.blocks) {
+				t.Errorf("mining() did not create a new block")
+			}
 		})
 	}
 }
