@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"LOG735-PG/src/node"
-	"log"
 )
 
 type NodeRPC struct {
@@ -37,7 +36,7 @@ func (n *NodeRPC) DeliverMessage(args *MessageRPC, reply *int) error {
 	// MINEUR-03
 	// CLIENT-07
 	// To implement
-	log.Printf("NODE-RPC : I received %s from %s\n", args.Message, args.PeerID)
+	//log.Printf("NODE-RPC : I received %s from %s\n", args.Message, args.PeerID)
 	n.Node.ReceiveMessage(args.Message, args.Time, args.PeerID)
 	return nil
 }

@@ -21,9 +21,6 @@ type Message struct {
 }
 
 func main() {
-
-
-
 	log.Printf("my peer is " + os.Getenv("PEERS"))
 
 	var node node.Node
@@ -56,7 +53,6 @@ func main() {
 	for {
 		time.Sleep(time.Hour)
 	}
-
 }
 
 func handleConnections(w http.ResponseWriter, r *http.Request){

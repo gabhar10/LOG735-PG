@@ -129,7 +129,6 @@ func (c Client) HandleUiMessage() error{
 				conn.conn.Call("NodeRPC.DeliverMessage", message, &reply)
 			}
 		}
-		log.Printf("Ending loop...\n")
 	}
 	return nil
 }
