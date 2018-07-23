@@ -14,3 +14,8 @@ const MessagesChannelSize = 100
 
 // BlocksChannelSize is the size of the channel for incoming blocks from other miners
 const BlocksChannelSize = 10
+
+type Peer struct {
+	Host string
+	Port string
+}

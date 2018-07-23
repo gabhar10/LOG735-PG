@@ -18,43 +18,48 @@ import (
 type Miner struct {
 	ID                string            // i.e. Run-time port associated to container
 	blocks            []node.Block      // MINEUR-07
-	peers             []string          // Slice of IDs
+	peers             []node.Peer       // Slice of peers
 	rpcHandler        *brpc.NodeRPC     // Handler for RPC requests
 	incomingMsgChan   chan node.Message // Channel for incoming messages from other clients
 	incomingBlockChan chan node.Block   // Channel for incoming blocks from other miners
 	quit              chan bool         // Channel to cancel mining operations
-	mutex             sync.Mutex        // Mutex for synchronization between routines
+	mutex             *sync.Mutex       // Mutex for synchronization between routines
 }
 
-func NewMiner(port, peers string) node.Node {
+func NewMiner(port string, peers []node.Peer) node.Node {
 	m := &Miner{
 		port,
 		make([]node.Block, node.MinBlocksReturnSize),
-		strings.Split(peers, " "),
+		peers,
 		new(brpc.NodeRPC),
 		make(chan node.Message, node.MessagesChannelSize),
 		make(chan node.Block, node.BlocksChannelSize),
 		make(chan bool),
-		sync.Mutex{},
+		&sync.Mutex{},
 	}
 	m.rpcHandler.Node = m
 	return m
 }
 
 func (m *Miner) Start() {
-
-	go m.mining()
+	go func() {
+		block, err := m.mining()
+		if err != nil {
+			log.Fatalf("Error while mining: %s", err.Error())
+		}
+		m.blocks = append(m.blocks, block)
+	}()
 }
 
 // MINEUR-12
 
 func (m *Miner) SetupRPC(port string) error {
-	rpc.Register(m.rpcHandler)
-	rpc.HandleHTTP()
 	l, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%s", port))
 	if err != nil {
 		return err
 	}
+	rpc.Register(m.rpcHandler)
+	rpc.HandleHTTP()
 	log.Printf("Listening on TCP port %s\n", port)
 	go http.Serve(l, nil)
 	return nil
@@ -66,7 +71,7 @@ func (m Miner) Peer() error {
 		if err != nil {
 			return err
 		}
-		args := &brpc.ConnectionRPC{m.ID}
+		args := &brpc.ConnectionRPC{PeerID: m.ID}
 		var reply brpc.BlocksRPC
 		err = client.Call("NodeRPC.Peer", args, &reply)
 		if err != nil {
@@ -126,20 +131,22 @@ func (m Miner) ReceiveBlock(block node.Block) {
 	// start another mining if we have len(messageQueue) > node.BlockSize
 }
 
-func (m *Miner) mining() {
+func (m *Miner) mining() (node.Block, error) {
 	block := m.CreateBlock()
 	hashedHeader, err := m.findingNounce(&block)
 
-	if err == nil {
-		log.Println("Nounce : ", block.Header.Nounce)
-		block.Header.Hash = hashedHeader
-		m.blocks = append(m.blocks, block)
-		m.mutex.Unlock()
-		if len(m.quit) > 0 {
-			<-m.quit
-		}
+	if err != nil {
+		return node.Block{}, err
 	}
-	return
+
+	log.Println("Nounce : ", block.Header.Nounce)
+	block.Header.Hash = hashedHeader
+	m.mutex.Unlock()
+	if len(m.quit) > 0 {
+		<-m.quit
+		return node.Block{}, nil
+	}
+	return block, nil
 }
 
 func (m *Miner) findingNounce(block *node.Block) ([sha256.Size]byte, error) {

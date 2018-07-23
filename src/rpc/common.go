@@ -31,7 +31,7 @@ type (
 	}
 )
 
-func ConnectTo(port string) (*rpc.Client, error) {
+func ConnectTo(peer node.Peer) (*rpc.Client, error) {
 	maxTries := 5
 	var (
 		c   *rpc.Client
@@ -39,8 +39,8 @@ func ConnectTo(port string) (*rpc.Client, error) {
 	)
 	for i := 0; i < maxTries; i++ {
 		time.Sleep(time.Second)
-		log.Printf("Dialing %s, try #%d\n", port, i+1)
-		c, err = rpc.DialHTTP("tcp", fmt.Sprintf("node-%s:%s", port, port))
+		log.Printf("Dialing %s, try #%d\n", fmt.Sprintf("%s:%s", peer.Host, peer.Port), i+1)
+		c, err = rpc.DialHTTP("tcp", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
 		if err == nil {
 			break
 		}

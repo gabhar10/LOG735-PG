@@ -20,7 +20,6 @@ func (n *NodeRPC) Peer(args *ConnectionRPC, reply *BlocksRPC) error {
 	// MINEUR-02
 
 	// Mutate blocks ...
-
 	reply = &BlocksRPC{
 		Blocks: n.Node.GetBlocks(),
 	}
