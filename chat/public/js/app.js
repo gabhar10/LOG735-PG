@@ -15,18 +15,32 @@ new Vue({
         this.ws.addEventListener('message', function(e) {
 
             var msg = JSON.parse(e.data);
-            self.chatContent += '<div class="chip">'
-                + msg.peer
-                + '</div>'
-                + emojione.toImage(msg.message) + '<br/>'; // Parse emojis
+
+            console.log(msg.peer);
+            console.log("My pseudo is : " + self.pseudo);
+            if (msg.peer == self.pseudo){
+                self.chatContent += '<div class="chip teal" >'
+                    + msg.peer
+                    + '</div>'
+                    + emojione.toImage(msg.message) + '<br/>'; // Parse emojis
+            }
+            else
+            {
+                self.chatContent += '<div class="chip">'
+                    + msg.peer
+                    + '</div>'
+                    + emojione.toImage(msg.message) + '<br/>'; // Parse emojis
+            }
 
             var element = document.getElementById('chat-messages');
             element.scrollTop = element.scrollHeight; // Auto scroll to the bottom
+
         });
     },
     methods: {
         send: function () {
             if (this.newMsg != '') {
+                console.log("Sending with pseudo : " + this.pseudo)
                 this.ws.send(
                     JSON.stringify({
                             message: $('<p>').html(this.newMsg).text(),
@@ -41,7 +55,7 @@ new Vue({
                 Materialize.toast('You must enter a name', 2000);
                 return
             }
-            this.username = $('<p>').html(this.username).text();
+            this.pseudo = $('<p>').html(this.pseudo).text();
             this.joined = true;
         },
         gravatarURL: function(email) {
