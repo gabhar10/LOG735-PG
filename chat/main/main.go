@@ -10,7 +10,7 @@ import (
 	"os"
 )
 
-const APP_PORT = "8001"
+const HTTP_PORT = "8000"
 var clients = make(map[*websocket.Conn]bool)// Websocket Slice for exchange between server and web application
 var uiChannel = make(chan node.Message) 	// Channel for incoming message from Client Node
 var nodeChannel = make(chan node.Message) 	// Channel for outgoing message from web application
@@ -24,8 +24,8 @@ type Message struct {
 // Create client node and wait for connection from port 8000
 func main() {
 	var node node.Node
-	node = app.NewClient(APP_PORT, os.Getenv("PEERS"), uiChannel, nodeChannel)
-	err := node.SetupRPC(APP_PORT)
+	node = app.NewClient(os.Getenv("PORT"), os.Getenv("PEERS"), uiChannel, nodeChannel)
+	err := node.SetupRPC(os.Getenv("PORT"))
 	if err != nil {
 		log.Fatal("RPC setup error:", err)
 	}
@@ -40,10 +40,10 @@ func main() {
 	http.HandleFunc("/ws", handleConnections)
 	go handleMessages()
 
-	log.Println("http server started on :8000")
+	log.Println("http server started on :$s", HTTP_PORT)
 
 	go func() {
-		err := http.ListenAndServe(":8000", nil)
+		err := http.ListenAndServe(":"+HTTP_PORT, nil)
 		if err != nil {
 			log.Fatal("ListenAndServe: ", err)
 		}
