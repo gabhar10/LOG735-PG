@@ -123,11 +123,6 @@ with open('docker-compose.yaml', 'w+') as f:
 # Write index.html
 with open('../webapp/scripts/index.html.template', 'r') as f:
     content = f.read()
-	
-# Write chat application environment variables
-with open('../chat/environment_variable.list', 'w') as f:
-	f.write('PEERS=%s' % CLIENTS[1]['port'])
-	
 
 content = content.replace('%VERTICES%', ''.join(''+line for line in visjs_vertices[:-2].splitlines(True)))
 content = content.replace('%EDGES%', ''.join(''+line for line in visjs_edges[:-2].splitlines(True)))
