@@ -4,7 +4,6 @@ import (
 	"LOG735-PG/src/node"
 	brpc "LOG735-PG/src/rpc"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"net/rpc"
@@ -14,18 +13,18 @@ import (
 
 type (
 	Client struct {
-		ID         string       // i.e. Run-time port associated to container
-		blocks     []node.Block // Can be a subset of the full chain
-		peers      []string     // Slice of IDs
+		ID         string       		// i.e. Run-time port associated to container
+		blocks     []node.Block 		// Can be a subset of the full chain
+		peers      []string     		// Slice of IDs
 		rpcHandler *brpc.NodeRPC
-		connections []PeerConnection
-		uiChannel chan node.Message
-		nodeChannel chan node.Message
+		connections []PeerConnection	// Slice of all current connection
+		uiChannel chan node.Message		// Channel to send message from node to chat application
+		nodeChannel chan node.Message	// Channel to send message from chat application to node
 	}
 
 	PeerConnection struct {
-		ID   string
-		conn *rpc.Client
+		ID   string			// ID of peer
+		conn *rpc.Client	// Connection of peer
 	}
 )
 
@@ -54,7 +53,6 @@ func (c *Client) SetupRPC(port string) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("Listening on TCP port %s\n", port)
 	go http.Serve(l, nil)
 	return nil
 }
@@ -80,7 +78,6 @@ func (c Client) Peer() error {
 		newConnection.ID = peer
 		newConnection.conn = client
 		c.connections = append(c.connections, *newConnection)
-		log.Printf("Successfully peered with node-%s\n", peer)
 	}
 
 
@@ -133,7 +130,6 @@ func (c Client) HandleUiMessage() error{
 }
 
 func (c Client) StartMessageLoop() error{
-	log.Printf("Starting message loop")
 	for{
 		time.Sleep(5 * time.Second)
 		for _, conn := range c.connections {

@@ -2,12 +2,11 @@ new Vue({
     el: '#app',
 
     data: {
-        ws: null, // Our websocket
-        newMsg: '', // Holds new messages to be sent to the server
-        chatContent: '', // A running list of chat messages displayed on the screen
-        email: null, // Email address used for grabbing an avatar
-        pseudo: null, // Our username
-        joined: false // True if email and username have been filled in
+        ws: null, // websocket to server
+        newMsg: '', // New message input field
+        chatContent: '', // List of all messages
+        pseudo: null, // name of current user
+        joined: false // Indicates user has entered pseudo
     },
     created: function() {
         var self = this;
@@ -15,9 +14,6 @@ new Vue({
         this.ws.addEventListener('message', function(e) {
 
             var msg = JSON.parse(e.data);
-
-            console.log(msg.peer);
-            console.log("My pseudo is : " + self.pseudo);
             if (msg.peer == self.pseudo){
                 self.chatContent += '<div class="chip teal" >'
                     + msg.peer
@@ -40,7 +36,6 @@ new Vue({
     methods: {
         send: function () {
             if (this.newMsg != '') {
-                console.log("Sending with pseudo : " + this.pseudo)
                 this.ws.send(
                     JSON.stringify({
                             message: $('<p>').html(this.newMsg).text(),
@@ -57,9 +52,6 @@ new Vue({
             }
             this.pseudo = $('<p>').html(this.pseudo).text();
             this.joined = true;
-        },
-        gravatarURL: function(email) {
-            return 'http://www.gravatar.com/avatar/' + CryptoJS.MD5(email);
         }
     }
 });
