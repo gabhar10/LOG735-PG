@@ -36,8 +36,8 @@ func TestMiner_findingNounce(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			"sunny day",
-			fields{
+			name: "sunny day",
+			fields: fields{
 				"1",
 				make([]node.Block, 2),
 				make([]node.Peer, 1),
@@ -45,9 +45,9 @@ func TestMiner_findingNounce(t *testing.T) {
 				make(chan node.Message, 100),
 				make(chan node.Block, 10),
 				make(chan bool),
-				&sync.Mutex{},
+				new(sync.Mutex),
 			},
-			args{
+			args: args{
 				func() *node.Block {
 					messages := [node.BlockSize]node.Message{}
 					for i := 0; i < node.BlockSize; i++ {
@@ -56,8 +56,20 @@ func TestMiner_findingNounce(t *testing.T) {
 					return &node.Block{Header: node.Header{PreviousBlock: [sha256.Size]byte{}, Date: time.Now()}, Messages: messages}
 				}(),
 			},
-			[sha256.Size]byte{},
-			false,
+			want:    [sha256.Size]byte{},
+			wantErr: false,
+		},
+		{
+			name: "Use quit channel",
+			fields: fields{
+				quit: func() chan bool {
+					c := make(chan bool, 1)
+					c <- true
+					return c
+				}(),
+			},
+			want:    [sha256.Size]byte{},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -75,13 +87,14 @@ func TestMiner_findingNounce(t *testing.T) {
 			got, err := m.findingNounce(tt.args.block)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Miner.findingNounce() error = %v, wantErr %v", err, tt.wantErr)
-				return
 			}
-			firstCharacters := string(got[:node.MiningDifficulty])
 
-			if strings.Count(firstCharacters, "0") != node.MiningDifficulty {
-				t.Errorf("first %v characters are not zeros", node.MiningDifficulty)
-				return
+			if !tt.wantErr {
+				firstCharacters := string(got[:node.MiningDifficulty])
+				if strings.Count(firstCharacters, "0") != node.MiningDifficulty {
+					t.Errorf("first %v characters are not zeros", node.MiningDifficulty)
+					return
+				}
 			}
 		})
 	}
@@ -103,7 +116,6 @@ func TestMiner_CreateBlock(t *testing.T) {
 		fields fields
 		want   node.Block
 	}{
-		// TODO: Add test cases.
 		{
 			"sunny day",
 			fields{
@@ -114,7 +126,7 @@ func TestMiner_CreateBlock(t *testing.T) {
 				make(chan node.Message, 100),
 				make(chan node.Block, 10),
 				make(chan bool),
-				&sync.Mutex{},
+				new(sync.Mutex),
 			},
 			func() node.Block {
 				messages := [node.BlockSize]node.Message{}
@@ -203,7 +215,12 @@ func TestMiner_Start(t *testing.T) {
 		name   string
 		fields fields
 	}{
-		{name: "Sunny Day"},
+		{
+			name: "Sunny Day",
+			fields: fields{
+				mutex: new(sync.Mutex),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -249,6 +266,9 @@ func TestMiner_SetupRPC(t *testing.T) {
 			name:     "Port is already taken",
 			preFunc:  func() { l, _ = net.Listen("tcp", fmt.Sprintf("0.0.0.0:%s", "8888")) },
 			postFunc: func() { l.Close() },
+			fields: fields{
+				mutex: new(sync.Mutex),
+			},
 			args: args{
 				port: "8888",
 			},
@@ -258,6 +278,9 @@ func TestMiner_SetupRPC(t *testing.T) {
 			name:     "Sunny day",
 			preFunc:  func() {},
 			postFunc: func() {},
+			fields: fields{
+				mutex: new(sync.Mutex),
+			},
 			args: args{
 				port: "8888",
 			},
@@ -306,6 +329,7 @@ func TestMiner_Peer(t *testing.T) {
 					m.SetupRPC("9002")
 					return []node.Peer{node.Peer{Host: "127.0.0.1", Port: "9002"}}
 				}(),
+				mutex: new(sync.Mutex),
 			},
 			wantErr: false,
 		},
@@ -314,6 +338,7 @@ func TestMiner_Peer(t *testing.T) {
 			fields: fields{
 				ID:    "9001",
 				peers: []node.Peer{node.Peer{Host: "127.0.0.1", Port: "9003"}},
+				mutex: new(sync.Mutex),
 			},
 			wantErr: true,
 		},
@@ -349,6 +374,7 @@ func TestMiner_Broadcast(t *testing.T) {
 			fields: fields{
 				ID:    "8999",
 				peers: []node.Peer{},
+				mutex: new(sync.Mutex),
 			},
 			wantErr: false,
 		},
@@ -387,6 +413,7 @@ func TestMiner_ReceiveMessage(t *testing.T) {
 			name: "Sunny day",
 			fields: fields{
 				incomingMsgChan: make(chan node.Message, 1),
+				mutex:           new(sync.Mutex),
 			},
 			args: args{
 				content: "Hello",
@@ -437,7 +464,8 @@ func TestMiner_ReceiveBlock(t *testing.T) {
 		{
 			name: "Sunny day",
 			fields: fields{
-				quit: make(chan bool, 1),
+				quit:  make(chan bool, 1),
+				mutex: new(sync.Mutex),
 			},
 		},
 	}
@@ -470,10 +498,9 @@ func TestMiner_mining(t *testing.T) {
 		mutex             *sync.Mutex
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		want    node.Block
-		wantErr bool
+		name   string
+		fields fields
+		want   node.Block
 	}{
 		{
 			name: "sunny day",
@@ -485,7 +512,7 @@ func TestMiner_mining(t *testing.T) {
 				make(chan node.Message, node.MessagesChannelSize),
 				make(chan node.Block, node.BlocksChannelSize),
 				make(chan bool),
-				&sync.Mutex{},
+				new(sync.Mutex),
 			},
 			want: func() node.Block {
 				messages := [node.BlockSize]node.Message{}
@@ -494,7 +521,6 @@ func TestMiner_mining(t *testing.T) {
 				}
 				return node.Block{Messages: messages}
 			}(),
-			wantErr: false,
 		},
 		{
 			name: "Quit mining",
@@ -510,10 +536,9 @@ func TestMiner_mining(t *testing.T) {
 					c <- true
 					return c
 				}(),
-				&sync.Mutex{},
+				new(sync.Mutex),
 			},
-			want:    node.Block{},
-			wantErr: true,
+			want: node.Block{},
 		},
 	}
 	for _, tt := range tests {
@@ -537,12 +562,7 @@ func TestMiner_mining(t *testing.T) {
 				}
 			}()
 
-			got, err := m.mining()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Miner.mining() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
+			got := m.mining()
 			for _, v := range tt.want.Messages {
 				for _, w := range got.Messages {
 					if v.Content != w.Content {

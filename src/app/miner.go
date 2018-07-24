@@ -4,7 +4,6 @@ import (
 	"LOG735-PG/src/node"
 	brpc "LOG735-PG/src/rpc"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -43,10 +42,7 @@ func NewMiner(port string, peers []node.Peer) node.Node {
 
 func (m *Miner) Start() {
 	go func() {
-		block, err := m.mining()
-		if err != nil {
-			log.Fatalf("Error while mining: %s", err.Error())
-		}
+		block := m.mining()
 		m.blocks = append(m.blocks, block)
 	}()
 }
@@ -131,22 +127,20 @@ func (m Miner) ReceiveBlock(block node.Block) {
 	// start another mining if we have len(messageQueue) > node.BlockSize
 }
 
-func (m *Miner) mining() (node.Block, error) {
-	block := m.CreateBlock()
-	hashedHeader, err := m.findingNounce(&block)
+func (m *Miner) mining() node.Block {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 
-	if err != nil {
-		return node.Block{}, err
+	select {
+	case <-m.quit:
+		return node.Block{}
+	default:
+		block := m.CreateBlock()
+		hashedHeader, _ := m.findingNounce(&block)
+		log.Println("Nounce : ", block.Header.Nounce)
+		block.Header.Hash = hashedHeader
+		return block
 	}
-
-	log.Println("Nounce : ", block.Header.Nounce)
-	block.Header.Hash = hashedHeader
-	m.mutex.Unlock()
-	if len(m.quit) > 0 {
-		<-m.quit
-		return node.Block{}, nil
-	}
-	return block, nil
 }
 
 func (m *Miner) findingNounce(block *node.Block) ([sha256.Size]byte, error) {
@@ -157,7 +151,7 @@ findingNounce:
 	for {
 		select {
 		case <-m.quit:
-			return [sha256.Size]byte{}, errors.New("Error")
+			return [sha256.Size]byte{}, fmt.Errorf("Quit")
 		default:
 			block.Header.Nounce = nounce
 			hashedHeader = sha256.Sum256([]byte(fmt.Sprintf("%v", block.Header)))
@@ -165,7 +159,6 @@ findingNounce:
 
 			if strings.Count(firstCharacters, "0") == node.MiningDifficulty {
 				//add semaphore for race condition between mining routines
-				m.mutex.Lock()
 				break findingNounce
 			}
 			nounce++
