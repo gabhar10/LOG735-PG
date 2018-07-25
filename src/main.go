@@ -34,11 +34,7 @@ func main() {
 
 	switch role {
 	case "client":
-<<<<<<< HEAD
-		node = app.NewClient(os.Getenv("PORT"), os.Getenv("PEERS"), nil, nil)
-=======
-		n = app.NewClient(os.Getenv("PORT"), peers)
->>>>>>> Augment code coverage
+		n = app.NewClient(os.Getenv("PORT"), peers, nil, nil)
 	case "miner":
 		n = app.NewMiner(os.Getenv("PORT"), peers)
 	default:

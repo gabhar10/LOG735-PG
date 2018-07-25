@@ -51,7 +51,11 @@ func TestMiner_findingNounce(t *testing.T) {
 				func() *node.Block {
 					messages := [node.BlockSize]node.Message{}
 					for i := 0; i < node.BlockSize; i++ {
-						messages[i] = node.Message{"Salut!", time.Date(2018, 7, 15, 8, 0, 0, 0, time.UTC)}
+						messages[i] = node.Message{
+							Peer:    "",
+							Content: "Salut!",
+							Time:    time.Date(2018, 7, 15, 8, 0, 0, 0, time.UTC),
+						}
 					}
 					return &node.Block{Header: node.Header{PreviousBlock: [sha256.Size]byte{}, Date: time.Now()}, Messages: messages}
 				}(),
@@ -131,7 +135,11 @@ func TestMiner_CreateBlock(t *testing.T) {
 			func() node.Block {
 				messages := [node.BlockSize]node.Message{}
 				for i := 0; i < node.BlockSize; i++ {
-					messages[i] = node.Message{"Salut!", time.Date(2018, 7, 15, 8, 0, 0, 0, time.UTC)}
+					messages[i] = node.Message{
+						Peer:    "",
+						Content: "Salut!",
+						Time:    time.Date(2018, 7, 15, 8, 0, 0, 0, time.UTC),
+					}
 				}
 				return node.Block{Messages: messages}
 			}(),
@@ -139,7 +147,11 @@ func TestMiner_CreateBlock(t *testing.T) {
 	}
 	for _, tt := range tests {
 		for i := 0; i < node.BlockSize; i++ {
-			tt.fields.incomingMsgChan <- node.Message{"Salut!", time.Date(2018, 7, 15, 8, 0, 0, 0, time.UTC)}
+			tt.fields.incomingMsgChan <- node.Message{
+				Peer:    "",
+				Content: "Salut!",
+				Time:    time.Date(2018, 7, 15, 8, 0, 0, 0, time.UTC),
+			}
 		}
 		t.Run(tt.name, func(t *testing.T) {
 			m := &Miner{
@@ -403,6 +415,7 @@ func TestMiner_ReceiveMessage(t *testing.T) {
 	type args struct {
 		content string
 		temps   time.Time
+		peer    string
 	}
 	tests := []struct {
 		name   string
@@ -418,6 +431,7 @@ func TestMiner_ReceiveMessage(t *testing.T) {
 			args: args{
 				content: "Hello",
 				temps:   time.Now(),
+				peer:    "",
 			},
 		},
 	}
@@ -433,7 +447,7 @@ func TestMiner_ReceiveMessage(t *testing.T) {
 				quit:              tt.fields.quit,
 				mutex:             tt.fields.mutex,
 			}
-			m.ReceiveMessage(tt.args.content, tt.args.temps)
+			m.ReceiveMessage(tt.args.content, tt.args.temps, tt.args.peer)
 			mes := <-m.incomingMsgChan
 			if mes.Content != tt.args.content || mes.Time.After(time.Now()) {
 				t.Errorf("Miner.ReceiveMessage() did not return expected values: ")
