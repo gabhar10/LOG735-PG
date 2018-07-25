@@ -52,7 +52,7 @@ while len(USED_PORTS) < args.num_miners + args.num_clients:
         node = {'ID': 'C%d' % port, 'port': port, 'role': 'client', 'peers': []}
         CLIENTS.append(node)
         USED_PORTS.append(port)
-
+		
 # Fully connect anchor-miners together
 for i in ANCHOR_MINERS:
     for j in ANCHOR_MINERS:
@@ -83,7 +83,7 @@ visjs_vertices = ''
 visjs_edges = ''
 for i in CLIENTS:
     services += '%s:\n  image: log735:latest\n  container_name: node-%s\n  environment:\n\
-    - PEERS=%s\n    - ROLE=client\n    - PORT=%s\n  networks:\n    - blockchain\n' \
+    - PEERS=8001 %s\n    - ROLE=client\n    - PORT=%s\n  networks:\n    - blockchain\n' \
                 % (i['ID'], i['port'], " ".join(str(x) for x in i['peers']), i['port'])
     visjs_vertices += '        {id: %s, label: \'%s\'},\n' % (i['port'], i['ID'])
 
@@ -122,7 +122,7 @@ with open('docker-compose.yaml', 'w+') as f:
 
 # Write index.html
 with open('../webapp/scripts/index.html.template', 'r') as f:
-    content = f.read()	
+    content = f.read()
 
 content = content.replace('%VERTICES%', ''.join(''+line for line in visjs_vertices[:-2].splitlines(True)))
 content = content.replace('%EDGES%', ''.join(''+line for line in visjs_edges[:-2].splitlines(True)))

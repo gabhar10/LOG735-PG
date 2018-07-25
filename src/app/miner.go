@@ -115,8 +115,8 @@ func (m *Miner) CreateBlock() node.Block {
 	return node.Block{Header: header, Messages: messages}
 }
 
-func (m Miner) ReceiveMessage(content string, temps time.Time) {
-	m.incomingMsgChan <- node.Message{content, temps}
+func (m Miner) ReceiveMessage(content string, temps time.Time, peer string) {
+	m.incomingMsgChan <- node.Message{peer, content, temps}
 }
 
 func (m Miner) ReceiveBlock(block node.Block) {
