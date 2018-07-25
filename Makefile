@@ -1,7 +1,6 @@
 clean:
 	-cd topology; docker-compose down
 	-docker rm -f log735-webapp
-	-docker rm -f log735-chat
 	-rm -f webapp/docker-compose.logs
 build:
 	cd topology; python3 topology-creation.py --miners $(MINERS) --clients $(CLIENTS) --malicious-miners $(MMINERS)
