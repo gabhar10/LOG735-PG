@@ -10,7 +10,8 @@ import (
 	"os"
 )
 
-const HTTP_PORT = "8000"
+const HttpPort = ":8000"
+
 var clients = make(map[*websocket.Conn]bool)// Websocket Slice for exchange between server and web application
 var uiChannel = make(chan node.Message) 	// Channel for incoming message from Client Node
 var nodeChannel = make(chan node.Message) 	// Channel for outgoing message from web application
@@ -40,10 +41,9 @@ func main() {
 	http.HandleFunc("/ws", handleConnections)
 	go handleMessages()
 
-	log.Println("http server started on :$s", HTTP_PORT)
 
 	go func() {
-		err := http.ListenAndServe(":"+HTTP_PORT, nil)
+		err := http.ListenAndServe(HttpPort, nil)
 		if err != nil {
 			log.Fatal("ListenAndServe: ", err)
 		}
