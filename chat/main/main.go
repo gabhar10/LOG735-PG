@@ -8,6 +8,8 @@ import (
 	"LOG735-PG/src/app"
 	"time"
 	"os"
+	"strings"
+	"fmt"
 )
 
 const HttpPort = ":8000"
@@ -24,8 +26,18 @@ type Message struct {
 
 // Create client node and wait for connection from port 8000
 func main() {
+
+	peers := []node.Peer{}
+	for _, s := range strings.Split(os.Getenv("PEERS"), " ") {
+		p := node.Peer{
+			Host: fmt.Sprintf("node-%s", s),
+			Port: s}
+
+		peers = append(peers, p)
+	}
+
 	var node node.Node
-	node = app.NewClient(os.Getenv("PORT"), os.Getenv("PEERS"), uiChannel, nodeChannel)
+	node = app.NewClient(os.Getenv("PORT"), peers, uiChannel, nodeChannel)
 	err := node.SetupRPC(os.Getenv("PORT"))
 	if err != nil {
 		log.Fatal("RPC setup error:", err)

@@ -4,7 +4,6 @@ import (
 	"LOG735-PG/src/node"
 	brpc "LOG735-PG/src/rpc"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -18,43 +17,45 @@ import (
 type Miner struct {
 	ID                string            // i.e. Run-time port associated to container
 	blocks            []node.Block      // MINEUR-07
-	peers             []string          // Slice of IDs
+	peers             []node.Peer       // Slice of peers
 	rpcHandler        *brpc.NodeRPC     // Handler for RPC requests
 	incomingMsgChan   chan node.Message // Channel for incoming messages from other clients
 	incomingBlockChan chan node.Block   // Channel for incoming blocks from other miners
 	quit              chan bool         // Channel to cancel mining operations
-	mutex             sync.Mutex        // Mutex for synchronization between routines
+	mutex             *sync.Mutex       // Mutex for synchronization between routines
 }
 
-func NewMiner(port, peers string) node.Node {
+func NewMiner(port string, peers []node.Peer) node.Node {
 	m := &Miner{
 		port,
 		make([]node.Block, node.MinBlocksReturnSize),
-		strings.Split(peers, " "),
+		peers,
 		new(brpc.NodeRPC),
 		make(chan node.Message, node.MessagesChannelSize),
 		make(chan node.Block, node.BlocksChannelSize),
 		make(chan bool),
-		sync.Mutex{},
+		&sync.Mutex{},
 	}
 	m.rpcHandler.Node = m
 	return m
 }
 
 func (m *Miner) Start() {
-
-	go m.mining()
+	go func() {
+		block := m.mining()
+		m.blocks = append(m.blocks, block)
+	}()
 }
 
 // MINEUR-12
 
 func (m *Miner) SetupRPC(port string) error {
-	rpc.Register(m.rpcHandler)
-	rpc.HandleHTTP()
 	l, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%s", port))
 	if err != nil {
 		return err
 	}
+	rpc.Register(m.rpcHandler)
+	rpc.HandleHTTP()
 	log.Printf("Listening on TCP port %s\n", port)
 	go http.Serve(l, nil)
 	return nil
@@ -66,7 +67,7 @@ func (m Miner) Peer() error {
 		if err != nil {
 			return err
 		}
-		args := &brpc.ConnectionRPC{m.ID}
+		args := &brpc.ConnectionRPC{PeerID: m.ID}
 		var reply brpc.BlocksRPC
 		err = client.Call("NodeRPC.Peer", args, &reply)
 		if err != nil {
@@ -126,20 +127,20 @@ func (m Miner) ReceiveBlock(block node.Block) {
 	// start another mining if we have len(messageQueue) > node.BlockSize
 }
 
-func (m *Miner) mining() {
-	block := m.CreateBlock()
-	hashedHeader, err := m.findingNounce(&block)
+func (m *Miner) mining() node.Block {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 
-	if err == nil {
+	select {
+	case <-m.quit:
+		return node.Block{}
+	default:
+		block := m.CreateBlock()
+		hashedHeader, _ := m.findingNounce(&block)
 		log.Println("Nounce : ", block.Header.Nounce)
 		block.Header.Hash = hashedHeader
-		m.blocks = append(m.blocks, block)
-		m.mutex.Unlock()
-		if len(m.quit) > 0 {
-			<-m.quit
-		}
+		return block
 	}
-	return
 }
 
 func (m *Miner) findingNounce(block *node.Block) ([sha256.Size]byte, error) {
@@ -150,7 +151,7 @@ findingNounce:
 	for {
 		select {
 		case <-m.quit:
-			return [sha256.Size]byte{}, errors.New("Error")
+			return [sha256.Size]byte{}, fmt.Errorf("Quit")
 		default:
 			block.Header.Nounce = nounce
 			hashedHeader = sha256.Sum256([]byte(fmt.Sprintf("%v", block.Header)))
@@ -158,7 +159,6 @@ findingNounce:
 
 			if strings.Count(firstCharacters, "0") == node.MiningDifficulty {
 				//add semaphore for race condition between mining routines
-				m.mutex.Lock()
 				break findingNounce
 			}
 			nounce++
