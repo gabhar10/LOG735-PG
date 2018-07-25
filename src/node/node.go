@@ -11,4 +11,5 @@ type Node interface {
 	ReceiveMessage(string, time.Time, string)
 	ReceiveBlock(Block)
 	Start()
+	Disconnect() error
 }

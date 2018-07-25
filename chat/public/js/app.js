@@ -52,6 +52,10 @@ new Vue({
             }
             this.pseudo = $('<p>').html(this.pseudo).text();
             this.joined = true;
+        },
+        disconnect: function() {
+            console.log("Disconnecting...")
+            
         }
     }
 });

@@ -166,3 +166,7 @@ findingNounce:
 	}
 	return hashedHeader, nil
 }
+
+func (m *Miner) Disconnect() error{
+	return nil
+}
