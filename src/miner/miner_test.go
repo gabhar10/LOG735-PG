@@ -1,4 +1,4 @@
-package app
+package miner
 
 import (
 	"LOG735-PG/src/node"

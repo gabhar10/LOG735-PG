@@ -1,6 +1,7 @@
-package app
+package client
 
 import (
+	"LOG735-PG/src/miner"
 	"LOG735-PG/src/node"
 	brpc "LOG735-PG/src/rpc"
 	"testing"
@@ -24,10 +25,10 @@ func TestClient_Peer(t *testing.T) {
 		{
 			name: "Peer with miner",
 			fields: fields{
-				ID: "111",
+				ID: "9001",
 				peers: func() []node.Peer {
 					driver := node.Peer{Host: "127.0.0.1", Port: "9001"}
-					m := NewMiner("9002", []node.Peer{driver}).(*Miner)
+					m := miner.NewMiner("9002", []node.Peer{driver}).(*miner.Miner)
 					m.SetupRPC("9002")
 					return []node.Peer{node.Peer{Host: "127.0.0.1", Port: "9002"}}
 				}(),

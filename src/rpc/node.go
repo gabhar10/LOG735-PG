@@ -20,15 +20,12 @@ func (n *NodeRPC) Peer(args *ConnectionRPC, reply *BlocksRPC) error {
 	// MINEUR-02
 
 	// Mutate blocks ...
-	reply = &BlocksRPC{
-		Blocks: n.Node.GetBlocks(),
-	}
+	reply.Blocks = n.Node.GetBlocks()
 
 	// Broadcast to all peers presence of new peer
 	// MINEUR-08
 	return nil
 }
-
 
 func (n *NodeRPC) DeliverMessage(args *MessageRPC, reply *int) error {
 	// Upon reception of message by a client

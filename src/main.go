@@ -1,7 +1,8 @@
 package main
 
 import (
-	"LOG735-PG/src/app"
+	"LOG735-PG/src/client"
+	"LOG735-PG/src/miner"
 	"LOG735-PG/src/node"
 	"fmt"
 	"log"
@@ -34,9 +35,9 @@ func main() {
 
 	switch role {
 	case "client":
-		n = app.NewClient(os.Getenv("PORT"), peers, nil, nil)
+		n = client.NewClient(os.Getenv("PORT"), peers, nil, nil)
 	case "miner":
-		n = app.NewMiner(os.Getenv("PORT"), peers)
+		n = miner.NewMiner(os.Getenv("PORT"), peers)
 	default:
 		log.Fatalf("Unsupported role %s\n", role)
 	}
