@@ -12,4 +12,5 @@ type Node interface {
 	ReceiveBlock(Block)
 	Start()
 	Disconnect() error
+	CloseConnection(string) error
 }

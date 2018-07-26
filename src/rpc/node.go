@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"LOG735-PG/src/node"
+	"log"
 )
 
 type NodeRPC struct {
@@ -55,7 +56,7 @@ func (n *NodeRPC) GetBlocks(args *GetBlocksRPC, reply *BlocksRPC) error {
 }
 
 func (n *NodeRPC) Disconnect(args *string, reply *int) error {
-	// Send to all peers
+	n.Node.CloseConnection(*args)
 	// To implement
 	return nil
 }

@@ -9,6 +9,7 @@ import (
 	"net/rpc"
 	"strings"
 	"time"
+	"log"
 )
 
 type (
@@ -58,7 +59,7 @@ func (c *Client) SetupRPC(port string) error {
 }
 
 
-func (c Client) Peer() error {
+func (c *Client) Peer() error {
 	for _, peer := range c.peers {
 		client, err := brpc.ConnectTo(peer)
 		if err != nil {
@@ -84,6 +85,7 @@ func (c Client) Peer() error {
 	// start trafic generation
 	go c.StartMessageLoop()
 	go c.HandleUiMessage()
+	//go c.Disconnect()
 	return nil
 }
 
@@ -104,13 +106,23 @@ func (c Client) Broadcast() error {
 func (c Client) Disconnect() error {
 	// Disconnect (RPC) to peers
 	// CLIENT-05
-	// To implement
-	/*log.Printf("Sending Disconnect signal to all my peers")
 	for _, conn := range c.connections {
+		log.Printf("Sending Disconnect signal to peer %s", conn.ID)
 		var reply int
-		message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, msg.Content, time.Now()}
-		conn.conn.Call("NodeRPC.DeliverMessage", message, &reply)
-	}*/
+		conn.conn.Call("NodeRPC.Disconnect", c.ID, &reply)
+	}
+	return nil
+}
+
+func (c *Client) CloseConnection(disconnectingPeer string) error{
+	for i := 0; i < len(c.connections); i++{
+		if c.connections[i].ID == disconnectingPeer{
+			c.connections[i].conn.Close()
+			c.connections[i] = c.connections[len(c.connections)-1]
+			c.connections = c.connections[:len(c.connections)-1]
+			break
+		}
+	}
 	return nil
 }
 

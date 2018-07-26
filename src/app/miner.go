@@ -167,6 +167,12 @@ findingNounce:
 	return hashedHeader, nil
 }
 
-func (m *Miner) Disconnect() error{
+func (m Miner) Disconnect() error{
+	return nil
+}
+
+
+func (m *Miner) CloseConnection(disconnectingPeer string) error{
+	// TODO : Implement when connections are sorted out
 	return nil
 }
