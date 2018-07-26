@@ -1,4 +1,4 @@
-package app
+package miner
 
 import (
 	"LOG735-PG/src/node"
@@ -61,7 +61,7 @@ func (m *Miner) SetupRPC(port string) error {
 	return nil
 }
 
-func (m Miner) Peer() error {
+func (m *Miner) Peer() error {
 	for _, peer := range m.peers {
 		client, err := brpc.ConnectTo(peer)
 		if err != nil {
@@ -73,8 +73,8 @@ func (m Miner) Peer() error {
 		if err != nil {
 			return err
 		}
-		if reply.Blocks != nil {
-			return fmt.Errorf("Blocks are not defined")
+		if len(reply.Blocks) < node.MinBlocksReturnSize {
+			return fmt.Errorf("Returned size of blocks is below %d", node.MinBlocksReturnSize)
 		}
 		log.Printf("Successfully peered with node-%s\n", peer)
 	}
@@ -82,13 +82,13 @@ func (m Miner) Peer() error {
 	return nil
 }
 
-func (m Miner) GetBlocks() []node.Block {
+func (m *Miner) GetBlocks() []node.Block {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	return m.blocks
 }
 
-func (m Miner) Broadcast() error {
+func (m *Miner) Broadcast() error {
 	// DeliverMessage (RPC) to peers
 	// MINEUR-04
 	// To implement
@@ -116,11 +116,11 @@ func (m *Miner) CreateBlock() node.Block {
 	return node.Block{Header: header, Messages: messages}
 }
 
-func (m Miner) ReceiveMessage(content string, temps time.Time, peer string) {
+func (m *Miner) ReceiveMessage(content string, temps time.Time, peer string) {
 	m.incomingMsgChan <- node.Message{peer, content, temps}
 }
 
-func (m Miner) ReceiveBlock(block node.Block) {
+func (m *Miner) ReceiveBlock(block node.Block) {
 	m.quit <- false
 	// compare receivedBlock with miningBlock and
 	// delete messages from miningBlock that are in the receivedBlock if the receivedBlock is valid

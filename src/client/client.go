@@ -1,4 +1,4 @@
-package app
+package client
 
 import (
 	"LOG735-PG/src/node"
@@ -69,9 +69,10 @@ func (c Client) Peer() error {
 		if err != nil {
 			return err
 		}
-		if reply.Blocks != nil {
-			return fmt.Errorf("Blocks are not defined")
+		if len(reply.Blocks) < node.MinBlocksReturnSize {
+			return fmt.Errorf("Returned size of blocks is below %d", node.MinBlocksReturnSize)
 		}
+
 		var newConnection = new(PeerConnection)
 		newConnection.ID = peer.Host
 		newConnection.conn = client
