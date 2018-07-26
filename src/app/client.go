@@ -9,7 +9,6 @@ import (
 	"net/rpc"
 	"strings"
 	"time"
-	"log"
 )
 
 type (
@@ -96,18 +95,10 @@ func (c Client) GetBlocks() []node.Block {
 // CLIENT-02, CLIENT-03, CLIENT-08, CLIENT-09
 // should be implemented within this package
 
-func (c Client) Broadcast() error {
-	// DeliverMessage (RPC) to peers
-	// CLIENT-04, CLIENT-06
-	// To implement
-	return nil
-}
-
 func (c Client) Disconnect() error {
 	// Disconnect (RPC) to peers
 	// CLIENT-05
 	for _, conn := range c.connections {
-		log.Printf("Sending Disconnect signal to peer %s", conn.ID)
 		var reply int
 		conn.conn.Call("NodeRPC.Disconnect", c.ID, &reply)
 	}

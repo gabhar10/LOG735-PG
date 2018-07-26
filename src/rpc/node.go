@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"LOG735-PG/src/node"
-	"log"
 )
 
 type NodeRPC struct {
