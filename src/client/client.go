@@ -1,4 +1,4 @@
-package app
+package client
 
 import (
 	"LOG735-PG/src/node"
@@ -7,34 +7,33 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
-	"strings"
 	"time"
 )
 
 type (
 	Client struct {
-		ID         string       		// i.e. Run-time port associated to container
-		blocks     []node.Block 		// Can be a subset of the full chain
-		peers      []string     		// Slice of IDs
-		rpcHandler *brpc.NodeRPC
-		connections []PeerConnection	// Slice of all current connection
-		uiChannel chan node.Message		// Channel to send message from node to chat application
-		nodeChannel chan node.Message	// Channel to send message from chat application to node
+		ID          string            // i.e. Run-time port associated to container
+		blocks      []node.Block      // Can be a subset of the full chain
+		peers       []node.Peer       // Slice of peers
+		rpcHandler  *brpc.NodeRPC     // Handler for RPC calls
+		connections []PeerConnection  // Slice of all current connection
+		uiChannel   chan node.Message // Channel to send message from node to chat application
+		nodeChannel chan node.Message // Channel to send message from chat application to node
 	}
 
 	PeerConnection struct {
-		ID   string			// ID of peer
-		conn *rpc.Client	// Connection of peer
+		ID   string      // ID of peer
+		conn *rpc.Client // Connection of peer
 	}
 )
 
-func NewClient(port, peers string, uiChannel chan node.Message, nodeChannel chan node.Message) node.Node {
+func NewClient(port string, peers []node.Peer, uiChannel chan node.Message, nodeChannel chan node.Message) node.Node {
 	c := &Client{
 		port,
 		make([]node.Block, node.MinBlocksReturnSize),
-		strings.Split(peers, " "),
+		peers,
 		new(brpc.NodeRPC),
-		make([]PeerConnection,0),
+		make([]PeerConnection, 0),
 		uiChannel,
 		nodeChannel,
 	}
@@ -57,7 +56,6 @@ func (c *Client) SetupRPC(port string) error {
 	return nil
 }
 
-
 func (c *Client) Peer() error {
 	for _, peer := range c.peers {
 		client, err := brpc.ConnectTo(peer)
@@ -71,15 +69,15 @@ func (c *Client) Peer() error {
 		if err != nil {
 			return err
 		}
-		if reply.Blocks != nil {
-			return fmt.Errorf("Blocks are not defined")
+		if len(reply.Blocks) < node.MinBlocksReturnSize {
+			return fmt.Errorf("Returned size of blocks is below %d", node.MinBlocksReturnSize)
 		}
+
 		var newConnection = new(PeerConnection)
-		newConnection.ID = peer
+		newConnection.ID = peer.Host
 		newConnection.conn = client
 		c.connections = append(c.connections, *newConnection)
 	}
-
 
 	// start trafic generation
 	go c.StartMessageLoop()
@@ -123,7 +121,7 @@ func (c Client) ReceiveMessage(content string, temps time.Time, peer string) {
 	}
 }
 
-func (c Client) HandleUiMessage() error{
+func (c Client) HandleUiMessage() error {
 	if c.nodeChannel != nil {
 		for {
 			var msg node.Message
@@ -138,8 +136,8 @@ func (c Client) HandleUiMessage() error{
 	return nil
 }
 
-func (c Client) StartMessageLoop() error{
-	for{
+func (c Client) StartMessageLoop() error {
+	for {
 		time.Sleep(5 * time.Second)
 		for _, conn := range c.connections {
 			var reply int
@@ -153,7 +151,6 @@ func (c Client) StartMessageLoop() error{
 
 	return nil
 }
-
 
 func (c Client) ReceiveBlock(block node.Block) {
 	// Do nothing

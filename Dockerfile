@@ -16,6 +16,11 @@ COPY src/ /usr/local/go/src/LOG735-PG/src
 
 # Compile source code
 WORKDIR /usr/local/go/src/LOG735-PG/src
+# Test client package
+RUN pushd client; go test; popd
+# Test miner package
+RUN pushd miner; go test; popd
+# Build image
 RUN go build main.go
 
 CMD /usr/local/go/src/LOG735-PG/src/main

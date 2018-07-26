@@ -1,10 +1,13 @@
 package main
 
 import (
-	"LOG735-PG/src/app"
+	"LOG735-PG/src/client"
+	"LOG735-PG/src/miner"
 	"LOG735-PG/src/node"
+	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -18,26 +21,36 @@ func main() {
 	}
 
 	// Define RPC handler
-	var node node.Node
+	var n node.Node
 	role := os.Getenv("ROLE")
+
+	peers := []node.Peer{}
+	for _, s := range strings.Split(os.Getenv("PEERS"), " ") {
+		p := node.Peer{
+			Host: fmt.Sprintf("node-%s", s),
+			Port: s}
+
+		peers = append(peers, p)
+	}
+
 	switch role {
 	case "client":
-		node = app.NewClient(os.Getenv("PORT"), os.Getenv("PEERS"), nil, nil)
+		n = client.NewClient(os.Getenv("PORT"), peers, nil, nil)
 	case "miner":
-		node = app.NewMiner(os.Getenv("PORT"), os.Getenv("PEERS"))
+		n = miner.NewMiner(os.Getenv("PORT"), peers)
 	default:
 		log.Fatalf("Unsupported role %s\n", role)
 	}
 
 	// Start RPC server
 	nodePort := os.Getenv("PORT")
-	err := node.SetupRPC(nodePort)
+	err := n.SetupRPC(nodePort)
 	if err != nil {
 		log.Fatal("RPC setup error:", err)
 	}
 
 	// bootstrap to each peer, blocking mechanism
-	err = node.Peer()
+	err = n.Peer()
 	if err != nil {
 		log.Fatal("Peering error:", err)
 	}
