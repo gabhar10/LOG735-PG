@@ -44,6 +44,8 @@ func (m *Miner) Start() {
 	go func() {
 		block := m.mining()
 		m.blocks = append(m.blocks, block)
+		//MINEUR-06
+		m.BroadcastBlock(m.blocks)
 	}()
 }
 
@@ -82,16 +84,46 @@ func (m *Miner) Peer() error {
 	return nil
 }
 
+func (m *Miner) BroadcastBlock([]node.Block) error {
+	for _, peer := range m.peers {
+		client, err := brpc.ConnectTo(peer)
+		if err != nil {
+			return err
+		}
+		args := &brpc.BlocksRPC{ConnectionRPC: brpc.ConnectionRPC{PeerID: m.ID}, Blocks: m.blocks}
+		var reply *int
+		err = client.Call("NodeRPC.DeliverBlock", args, &reply)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (m *Miner) GetBlocks() []node.Block {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	return m.blocks
 }
 
-func (m *Miner) Broadcast() error {
+func (m *Miner) Broadcast(message node.Message) error {
 	// DeliverMessage (RPC) to peers
-	// MINEUR-04
 	// To implement
+	for _, peer := range m.peers {
+		client, err := brpc.ConnectTo(peer)
+		if err != nil {
+			return err
+		}
+		var me = node.Peer{
+			Host: fmt.Sprintf("node-%s", m.ID),
+			Port: m.ID}
+		args := &brpc.MessageRPC{brpc.ConnectionRPC{PeerID: m.ID}, message.Content, message.Time, append(m.peers, me)}
+		var reply *int
+		err = client.Call("NodeRPC.DeliverMessage", args, &reply)
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
@@ -122,6 +154,8 @@ func (m *Miner) ReceiveMessage(content string, temps time.Time, peer string) {
 
 func (m *Miner) ReceiveBlock(block node.Block) {
 	m.quit <- false
+	// MINEUR-05
+
 	// compare receivedBlock with miningBlock and
 	// delete messages from miningBlock that are in the receivedBlock if the receivedBlock is valid
 	// start another mining if we have len(messageQueue) > node.BlockSize
