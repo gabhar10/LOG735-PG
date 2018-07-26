@@ -54,8 +54,13 @@ new Vue({
             this.joined = true;
         },
         disconnect: function() {
-            console.log("Disconnecting...")
-            
+            $.ajax({
+                type: "GET",
+                url: "http://localhost:8000/disconnect",
+                success: function(data){
+                    // Notify of disconnection
+                }
+            })
         }
     }
 });

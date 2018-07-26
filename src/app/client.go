@@ -105,6 +105,12 @@ func (c Client) Disconnect() error {
 	// Disconnect (RPC) to peers
 	// CLIENT-05
 	// To implement
+	/*log.Printf("Sending Disconnect signal to all my peers")
+	for _, conn := range c.connections {
+		var reply int
+		message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, msg.Content, time.Now()}
+		conn.conn.Call("NodeRPC.DeliverMessage", message, &reply)
+	}*/
 	return nil
 }
 

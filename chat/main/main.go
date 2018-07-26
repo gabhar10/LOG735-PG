@@ -8,6 +8,7 @@ import (
 	"LOG735-PG/src/app"
 	"time"
 	"os"
+	"fmt"
 )
 
 const HttpPort = ":8000"
@@ -16,6 +17,7 @@ var clients = make(map[*websocket.Conn]bool)// Websocket Slice for exchange betw
 var uiChannel = make(chan node.Message) 	// Channel for incoming message from Client Node
 var nodeChannel = make(chan node.Message) 	// Channel for outgoing message from web application
 var upgrader = websocket.Upgrader{}			// Used to upgrade HTTP connection to websocket
+var clientNode node.Node
 
 type Message struct {
 	Peer		string `json:"peer"`
@@ -24,13 +26,12 @@ type Message struct {
 
 // Create client node and wait for connection from port 8000
 func main() {
-	var node node.Node
-	node = app.NewClient(os.Getenv("PORT"), os.Getenv("PEERS"), uiChannel, nodeChannel)
-	err := node.SetupRPC(os.Getenv("PORT"))
+	clientNode = app.NewClient(os.Getenv("PORT"), os.Getenv("PEERS"), uiChannel, nodeChannel)
+	err := clientNode.SetupRPC(os.Getenv("PORT"))
 	if err != nil {
 		log.Fatal("RPC setup error:", err)
 	}
-	err = node.Peer()
+	err = clientNode.Peer()
 	if err != nil {
 		log.Fatal("Peering error:", err)
 	}
@@ -39,6 +40,7 @@ func main() {
 	http.Handle("/", fs)
 
 	http.HandleFunc("/ws", handleConnections)
+	http.HandleFunc("/disconnect", handleDisconnect)
 	go handleMessages()
 
 
@@ -68,6 +70,7 @@ func handleConnections(w http.ResponseWriter, r *http.Request){
 		var msg node.Message
 		var appMsg Message
 		err := ws.ReadJSON(&appMsg)
+
 		msg.Content = appMsg.Message
 		msg.Peer = appMsg.Peer
 		if err != nil{
@@ -78,6 +81,11 @@ func handleConnections(w http.ResponseWriter, r *http.Request){
 		uiChannel <- msg
 		nodeChannel <- msg
 	}
+}
+
+func handleDisconnect(w http.ResponseWriter, r *http.Request){
+	fmt.Fprint(w, " ")
+	clientNode.Disconnect()
 }
 
 // Handler for all incoming message from uiChannel (Message from node)
