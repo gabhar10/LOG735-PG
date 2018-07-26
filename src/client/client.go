@@ -74,7 +74,7 @@ func (c *Client) Peer() error {
 		}
 
 		var newConnection = new(PeerConnection)
-		newConnection.ID = peer.Host
+		newConnection.ID = peer.Port
 		newConnection.conn = client
 		c.connections = append(c.connections, *newConnection)
 	}

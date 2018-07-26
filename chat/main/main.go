@@ -36,9 +36,8 @@ func main() {
 		peers = append(peers, p)
 	}
 
-	var node node.Node
 	clientNode = client.NewClient(os.Getenv("PORT"), peers, uiChannel, nodeChannel)
-	err := node.SetupRPC(os.Getenv("PORT"))
+	err := clientNode.SetupRPC(os.Getenv("PORT"))
 	if err != nil {
 		log.Fatal("RPC setup error:", err)
 	}
