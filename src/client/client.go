@@ -16,26 +16,28 @@ type (
 		blocks      []node.Block      // Can be a subset of the full chain
 		peers       []node.Peer       // Slice of peers
 		rpcHandler  *brpc.NodeRPC     // Handler for RPC calls
-		connections []PeerConnection  // Slice of all current connection
+		connections []node.PeerConnection  // Slice of all current connection
 		uiChannel   chan node.Message // Channel to send message from node to chat application
 		nodeChannel chan node.Message // Channel to send message from chat application to node
-	}
-
-	PeerConnection struct {
-		ID   string      // ID of peer
-		conn *rpc.Client // Connection of peer
+		msgLoopChan chan string
+		connected	bool
 	}
 )
 
-func NewClient(port string, peers []node.Peer, uiChannel chan node.Message, nodeChannel chan node.Message) node.Node {
+func NewClient(port string,
+	peers []node.Peer,
+	uiChannel chan node.Message,
+	nodeChannel chan node.Message) node.Node {
 	c := &Client{
 		port,
 		make([]node.Block, node.MinBlocksReturnSize),
 		peers,
 		new(brpc.NodeRPC),
-		make([]PeerConnection, 0),
+		make([]node.PeerConnection, 0),
 		uiChannel,
 		nodeChannel,
+		make(chan string),
+		true,
 	}
 	c.rpcHandler.Node = c
 	return c
@@ -73,9 +75,9 @@ func (c *Client) Peer() error {
 			return fmt.Errorf("Returned size of blocks is below %d", node.MinBlocksReturnSize)
 		}
 
-		var newConnection = new(PeerConnection)
+		var newConnection = new(node.PeerConnection)
 		newConnection.ID = peer.Port
-		newConnection.conn = client
+		newConnection.Conn = client
 		c.connections = append(c.connections, *newConnection)
 	}
 
@@ -93,20 +95,26 @@ func (c Client) GetBlocks() []node.Block {
 // CLIENT-02, CLIENT-03, CLIENT-08, CLIENT-09
 // should be implemented within this package
 
-func (c Client) Disconnect() error {
-	// Disconnect (RPC) to peers
-	// CLIENT-05
-	for _, conn := range c.connections {
-		var reply int
-		conn.conn.Call("NodeRPC.Disconnect", c.ID, &reply)
+func (c *Client) Disconnect() error {
+
+	if c.connected == true{
+		// Disconnect (RPC) to peers
+		// CLIENT-05
+		for _, conn := range c.connections {
+			var reply int
+			conn.Conn.Call("NodeRPC.Disconnect", c.ID, &reply)
+
+		}
+		c.msgLoopChan <- " "
 	}
+
 	return nil
 }
 
 func (c *Client) CloseConnection(disconnectingPeer string) error{
 	for i := 0; i < len(c.connections); i++{
 		if c.connections[i].ID == disconnectingPeer{
-			c.connections[i].conn.Close()
+			c.connections[i].Conn.Close()
 			c.connections[i] = c.connections[len(c.connections)-1]
 			c.connections = c.connections[:len(c.connections)-1]
 			break
@@ -129,7 +137,7 @@ func (c Client) HandleUiMessage() error {
 			for _, conn := range c.connections {
 				var reply int
 				message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, msg.Content, time.Now()}
-				conn.conn.Call("NodeRPC.DeliverMessage", message, &reply)
+				conn.Conn.Call("NodeRPC.DeliverMessage", message, &reply)
 			}
 		}
 	}
@@ -138,14 +146,19 @@ func (c Client) HandleUiMessage() error {
 
 func (c Client) StartMessageLoop() error {
 	for {
-		time.Sleep(5 * time.Second)
-		for _, conn := range c.connections {
-			var reply int
-			message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, "Bonjour", time.Now()}
-			conn.conn.Call("NodeRPC.DeliverMessage", message, &reply)
-		}
-		if c.nodeChannel != nil {
-			c.uiChannel <- node.Message{c.ID, "Bonjour", time.Now()}
+		select{
+		case <- c.msgLoopChan:
+			return nil
+		default:
+			time.Sleep(5 * time.Second)
+			for _, conn := range c.connections {
+				var reply int
+				message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, "Bonjour", time.Now()}
+				conn.Conn.Call("NodeRPC.DeliverMessage", message, &reply)
+			}
+			if c.nodeChannel != nil {
+				c.uiChannel <- node.Message{c.ID, "Bonjour", time.Now()}
+			}
 		}
 	}
 

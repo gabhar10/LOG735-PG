@@ -1,5 +1,7 @@
 package node
 
+import "net/rpc"
+
 // BlockSize is the size of a single block (e.g. amount of messages per block)
 const BlockSize = 5
 
@@ -18,4 +20,9 @@ const BlocksChannelSize = 10
 type Peer struct {
 	Host string
 	Port string
+}
+
+type PeerConnection struct {
+	ID   string      // ID of peer
+	Conn *rpc.Client // Connection of peer
 }

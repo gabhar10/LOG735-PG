@@ -18,6 +18,7 @@ type Miner struct {
 	ID                string            // i.e. Run-time port associated to container
 	blocks            []node.Block      // MINEUR-07
 	peers             []node.Peer       // Slice of peers
+	connections 	  []node.PeerConnection  // Slice of all current connection
 	rpcHandler        *brpc.NodeRPC     // Handler for RPC requests
 	incomingMsgChan   chan node.Message // Channel for incoming messages from other clients
 	incomingBlockChan chan node.Block   // Channel for incoming blocks from other miners
@@ -30,6 +31,7 @@ func NewMiner(port string, peers []node.Peer) node.Node {
 		port,
 		make([]node.Block, node.MinBlocksReturnSize),
 		peers,
+		make([]node.PeerConnection, 0),
 		new(brpc.NodeRPC),
 		make(chan node.Message, node.MessagesChannelSize),
 		make(chan node.Block, node.BlocksChannelSize),
@@ -77,6 +79,11 @@ func (m *Miner) Peer() error {
 			return fmt.Errorf("Returned size of blocks is below %d", node.MinBlocksReturnSize)
 		}
 		log.Printf("Successfully peered with node-%s\n", peer)
+
+		var newConnection = new(node.PeerConnection)
+		newConnection.ID = peer.Port
+		newConnection.Conn = client
+		m.connections = append(m.connections, *newConnection)
 	}
 
 	return nil
@@ -173,6 +180,14 @@ func (m Miner) Disconnect() error{
 
 
 func (m *Miner) CloseConnection(disconnectingPeer string) error{
-	// TODO : Implement when connections are sorted out
+	for i := 0; i < len(m.connections); i++{
+		if m.connections[i].ID == disconnectingPeer{
+			m.connections[i].Conn.Close()
+			m.connections[i] = m.connections[len(m.connections)-1]
+			m.connections = m.connections[:len(m.connections)-1]
+			break
+		}
+	}
+	return nil
 	return nil
 }

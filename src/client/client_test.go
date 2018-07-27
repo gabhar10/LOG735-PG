@@ -13,7 +13,7 @@ func TestClient_Peer(t *testing.T) {
 		blocks      []node.Block
 		peers       []node.Peer
 		rpcHandler  *brpc.NodeRPC
-		connections []PeerConnection
+		connections []node.PeerConnection
 		uiChannel   chan node.Message
 		nodeChannel chan node.Message
 	}
