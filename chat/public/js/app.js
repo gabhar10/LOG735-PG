@@ -6,7 +6,9 @@ new Vue({
         newMsg: '', // New message input field
         chatContent: '', // List of all messages
         pseudo: null, // name of current user
-        joined: false // Indicates user has entered pseudo
+        joined: false, // Indicates user has entered pseudo
+        connected: true,
+        anchor: ''
     },
     created: function() {
         var self = this;
@@ -30,7 +32,6 @@ new Vue({
 
             var element = document.getElementById('chat-messages');
             element.scrollTop = element.scrollHeight; // Auto scroll to the bottom
-
         });
     },
     methods: {
@@ -58,9 +59,12 @@ new Vue({
                 type: "GET",
                 url: "http://localhost:8000/disconnect",
                 success: function(data){
-                    // Notify of disconnection
-                }
+                    this.connected = false;
+                }.bind(this)
             })
+        },
+        connect: function(){
+            console.log("connecting....")
         }
     }
 });
