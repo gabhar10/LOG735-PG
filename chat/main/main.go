@@ -51,6 +51,7 @@ func main() {
 
 	http.HandleFunc("/ws", handleConnections)
 	http.HandleFunc("/disconnect", handleDisconnect)
+	http.HandleFunc("/connect", handleConnect)
 	go handleMessages()
 
 
@@ -94,8 +95,16 @@ func handleConnections(w http.ResponseWriter, r *http.Request){
 }
 
 func handleDisconnect(w http.ResponseWriter, r *http.Request){
-	fmt.Fprint(w, " ")
 	clientNode.Disconnect()
+}
+
+func handleConnect(w http.ResponseWriter, r *http.Request){
+	if r.Method != "POST" {
+		http.NotFound(w, r)
+		return
+	}
+	field := r.FormValue("anchor")
+	clientNode.Connect(field)
 }
 
 // Handler for all incoming message from uiChannel (Message from node)

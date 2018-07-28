@@ -55,16 +55,35 @@ new Vue({
             this.joined = true;
         },
         disconnect: function() {
-            $.ajax({
+            self = this;
+            console.log(self.connected);
+            return $.ajax({
+                async: false,
+                cache:false,
                 type: "GET",
-                url: "http://localhost:8000/disconnect",
+                url: "http://localhost:" + location.port + "/disconnect",
                 success: function(data){
-                    this.connected = false;
-                }.bind(this)
-            })
+                    alert(data);
+                    self.connected = false;
+                },
+                error: function(XMLHttpRequest, textStatus, errorThrown) {
+                    alert("Status: " + textStatus); alert("Error: " + errorThrown);
+                }
+            });
+
         },
         connect: function(){
-            console.log("connecting....")
+            return $.ajax({
+                async: false,
+                cache:false,
+                type: "POST",
+                url: "http://localhost:" + location.port + "/connect",
+                data: {anchor: this.anchor},
+                success: function(data){
+                    alert(data);
+                    this.connected = true;
+                }.bind(this)
+            })
         }
     }
 });

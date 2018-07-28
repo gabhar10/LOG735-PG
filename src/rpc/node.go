@@ -56,3 +56,8 @@ func (n *NodeRPC) Disconnect(args *string, reply *int) error {
 	// To implement
 	return nil
 }
+
+func (n *NodeRPC) Connect(args *string, reply *int) error {
+	n.Node.OpenConnection(*args)
+	return nil
+}

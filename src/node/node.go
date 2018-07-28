@@ -11,6 +11,8 @@ type Node interface {
 	ReceiveMessage(string, time.Time, string)
 	ReceiveBlock(Block)
 	Start()
+	Connect(string) error
 	Disconnect() error
 	CloseConnection(string) error
+	OpenConnection(string) error
 }

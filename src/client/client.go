@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/rpc"
 	"time"
+	"log"
 )
 
 type (
@@ -95,6 +96,38 @@ func (c Client) GetBlocks() []node.Block {
 // CLIENT-02, CLIENT-03, CLIENT-08, CLIENT-09
 // should be implemented within this package
 
+func (c *Client) Connect(anchorPort string) error {
+
+	log.Printf("Establishing bidirectional connection to %s", anchorPort)
+	anchorPeer := node.Peer{
+		Host: fmt.Sprintf("node-%s", anchorPort),
+		Port: anchorPort}
+
+	client, err := brpc.ConnectTo(anchorPeer)
+	if err != nil {
+		log.Printf("Error while connecting to anchor")
+		return err
+	}
+
+	c.connections = make([]node.PeerConnection, 0)
+
+	var newConnection = new(node.PeerConnection)
+	newConnection.ID = anchorPeer.Port
+	newConnection.Conn = client
+	c.connections = append(c.connections, *newConnection)
+
+	var reply int
+	err = client.Call("NodeRPC.Connect", c.ID, &reply)
+	if err != nil{
+		log.Printf("Error while requesting connection to anchor : %s", err)
+
+	}
+
+	go c.StartMessageLoop()
+
+	return nil
+}
+
 func (c *Client) Disconnect() error {
 
 	if c.connected == true{
@@ -105,7 +138,9 @@ func (c *Client) Disconnect() error {
 			conn.Conn.Call("NodeRPC.Disconnect", c.ID, &reply)
 
 		}
+		c.connections = nil
 		c.msgLoopChan <- " "
+		log.Printf("Disconnecting from network")
 	}
 
 	return nil
@@ -120,6 +155,10 @@ func (c *Client) CloseConnection(disconnectingPeer string) error{
 			break
 		}
 	}
+	return nil
+}
+
+func (c *Client) OpenConnection(connectingPort string) error{
 	return nil
 }
 

@@ -49,6 +49,10 @@ func (m *Miner) Start() {
 	}()
 }
 
+func (m *Miner) Connect(anchorPort string) error{
+	return nil
+}
+
 // MINEUR-12
 
 func (m *Miner) SetupRPC(port string) error {
@@ -189,5 +193,23 @@ func (m *Miner) CloseConnection(disconnectingPeer string) error{
 		}
 	}
 	return nil
+}
+
+func (m *Miner) OpenConnection(connectingPort string) error{
+	log.Printf("Received connection request from %s", connectingPort)
+	anchorPeer := node.Peer{
+		Host: fmt.Sprintf("node-%s", connectingPort),
+		Port: connectingPort}
+
+	client, err := brpc.ConnectTo(anchorPeer)
+	if err != nil {
+		return err
+	}
+	log.Printf("Successfully peered with node-%s\n", connectingPort)
+	var newConnection = new(node.PeerConnection)
+	newConnection.ID = anchorPeer.Port
+	newConnection.Conn = client
+	m.connections = append(m.connections, *newConnection)
+
 	return nil
 }
