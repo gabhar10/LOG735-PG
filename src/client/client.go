@@ -56,7 +56,7 @@ func (c *Client) SetupRPC(port string) error {
 	return nil
 }
 
-func (c Client) Peer() error {
+func (c *Client) Peer() error {
 	for _, peer := range c.peers {
 		client, err := brpc.ConnectTo(peer)
 		if err != nil {
@@ -79,55 +79,53 @@ func (c Client) Peer() error {
 		c.connections = append(c.connections, *newConnection)
 	}
 
-	// start trafic generation
-	go c.StartMessageLoop()
-	go c.HandleUiMessage()
 	return nil
 }
 
-func (c Client) GetBlocks() []node.Block {
+func (c *Client) GetBlocks() []node.Block {
 	return c.blocks
 }
 
 // CLIENT-02, CLIENT-03, CLIENT-08, CLIENT-09
 // should be implemented within this package
 
-func (c Client) Broadcast() error {
+func (c *Client) Broadcast() error {
 	// DeliverMessage (RPC) to peers
 	// CLIENT-04, CLIENT-06
 	// To implement
 	return nil
 }
 
-func (c Client) Disconnect() error {
+func (c *Client) Disconnect() error {
 	// Disconnect (RPC) to peers
 	// CLIENT-05
 	// To implement
 	return nil
 }
 
-func (c Client) ReceiveMessage(content string, temps time.Time, peer string) {
+func (c *Client) ReceiveMessage(content string, temps time.Time, peer string) {
 	if c.uiChannel != nil {
 		c.uiChannel <- node.Message{peer, content, temps}
 	}
 }
 
-func (c Client) HandleUiMessage() error {
+func (c *Client) HandleUiMessage() error {
 	if c.nodeChannel != nil {
-		for {
-			var msg node.Message
-			msg = <-c.nodeChannel
-			for _, conn := range c.connections {
-				var reply int
-				message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, msg.Content, time.Now()}
-				conn.conn.Call("NodeRPC.DeliverMessage", message, &reply)
+		var msg node.Message
+		msg = <-c.nodeChannel
+		for _, conn := range c.connections {
+			var reply int
+			message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, msg.Content, time.Now()}
+			err := conn.conn.Call("NodeRPC.DeliverMessage", message, &reply)
+			if err != nil {
+				return err
 			}
 		}
 	}
 	return nil
 }
 
-func (c Client) StartMessageLoop() error {
+func (c *Client) StartMessageLoop() error {
 	for {
 		time.Sleep(5 * time.Second)
 		for _, conn := range c.connections {
@@ -143,6 +141,6 @@ func (c Client) StartMessageLoop() error {
 	return nil
 }
 
-func (c Client) ReceiveBlock(block node.Block) {
+func (c *Client) ReceiveBlock(block node.Block) {
 	// Do nothing
 }
