@@ -18,7 +18,7 @@ var clients = make(map[*websocket.Conn]bool)// Websocket Slice for exchange betw
 var uiChannel = make(chan node.Message) 	// Channel for incoming message from Client Node
 var nodeChannel = make(chan node.Message) 	// Channel for outgoing message from web application
 var upgrader = websocket.Upgrader{}			// Used to upgrade HTTP connection to websocket
-var clientNode node.Node
+var clientNode node.Node					// Server's client nod reference
 
 type Message struct {
 	Peer		string `json:"peer"`
@@ -94,10 +94,12 @@ func handleConnections(w http.ResponseWriter, r *http.Request){
 	}
 }
 
+// Handler if user want's to Disconnect
 func handleDisconnect(w http.ResponseWriter, r *http.Request){
 	clientNode.Disconnect()
 }
 
+// Handler if user wants to connect to Anchor Miner
 func handleConnect(w http.ResponseWriter, r *http.Request){
 	if r.Method != "POST" {
 		http.NotFound(w, r)

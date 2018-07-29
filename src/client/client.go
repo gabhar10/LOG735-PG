@@ -21,7 +21,6 @@ type (
 		uiChannel   chan node.Message // Channel to send message from node to chat application
 		nodeChannel chan node.Message // Channel to send message from chat application to node
 		msgLoopChan chan string
-		connected	bool
 	}
 )
 
@@ -38,7 +37,6 @@ func NewClient(port string,
 		uiChannel,
 		nodeChannel,
 		make(chan string),
-		true,
 	}
 	c.rpcHandler.Node = c
 	return c
@@ -96,59 +94,62 @@ func (c Client) GetBlocks() []node.Block {
 // CLIENT-02, CLIENT-03, CLIENT-08, CLIENT-09
 // should be implemented within this package
 
+// Connect node to Anchor Miner
 func (c *Client) Connect(anchorPort string) error {
 
-	log.Printf("Establishing bidirectional connection to %s", anchorPort)
+
 	anchorPeer := node.Peer{
 		Host: fmt.Sprintf("node-%s", anchorPort),
 		Port: anchorPort}
 
+	// Connect to Anchor Miner
 	client, err := brpc.ConnectTo(anchorPeer)
 	if err != nil {
 		log.Printf("Error while connecting to anchor")
 		return err
 	}
 
+	// Keep connection
 	c.connections = make([]node.PeerConnection, 0)
-
 	var newConnection = new(node.PeerConnection)
 	newConnection.ID = anchorPeer.Port
 	newConnection.Conn = client
 	c.connections = append(c.connections, *newConnection)
 
+	// Request Miner to create incoming connection
 	var reply int
 	err = client.Call("NodeRPC.Connect", c.ID, &reply)
 	if err != nil{
 		log.Printf("Error while requesting connection to anchor : %s", err)
-
+		c.connections = nil
+		return err
 	}
 
+	// Restart Message Loop
 	go c.StartMessageLoop()
 
 	return nil
 }
 
+// Ask all node to close connection and erase current connection slice
 func (c *Client) Disconnect() error {
 
-	if c.connected == true{
-		// Disconnect (RPC) to peers
-		// CLIENT-05
-		for _, conn := range c.connections {
-			var reply int
-			conn.Conn.Call("NodeRPC.Disconnect", c.ID, &reply)
-
-		}
-		c.connections = nil
-		c.msgLoopChan <- " "
+	for _, conn := range c.connections {
+		var reply int
+		conn.Conn.Call("NodeRPC.Disconnect", c.ID, &reply)
 	}
+	c.connections = nil
+	c.msgLoopChan <- " "
 
 	return nil
 }
 
+// Ignore all request for bidirectionnal connection
 func (c *Client) OpenConnection(connectingPort string) error{
 	return nil
 }
 
+// Close connection of requesting peer
 func (c *Client) CloseConnection(disconnectingPeer string) error{
 	for i := 0; i < len(c.connections); i++{
 		if c.connections[i].ID == disconnectingPeer{
