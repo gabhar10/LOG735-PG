@@ -56,14 +56,12 @@ new Vue({
         },
         disconnect: function() {
             self = this;
-            console.log(self.connected);
-            return $.ajax({
-                async: false,
+            Materialize.toast('Disconnecting from network', 2000);
+            $.ajax({
                 cache:false,
                 type: "GET",
                 url: "http://localhost:" + location.port + "/disconnect",
                 success: function(data){
-                    alert(data);
                     self.connected = false;
                 },
                 error: function(XMLHttpRequest, textStatus, errorThrown) {
@@ -73,14 +71,13 @@ new Vue({
 
         },
         connect: function(){
-            return $.ajax({
-                async: false,
+            Materialize.toast('Connecting to peer ' + this.anchor, 2000);
+            $.ajax({
                 cache:false,
                 type: "POST",
                 url: "http://localhost:" + location.port + "/connect",
                 data: {anchor: this.anchor},
                 success: function(data){
-                    alert(data);
                     this.connected = true;
                 }.bind(this)
             })

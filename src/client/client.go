@@ -140,9 +140,12 @@ func (c *Client) Disconnect() error {
 		}
 		c.connections = nil
 		c.msgLoopChan <- " "
-		log.Printf("Disconnecting from network")
 	}
 
+	return nil
+}
+
+func (c *Client) OpenConnection(connectingPort string) error{
 	return nil
 }
 
@@ -155,10 +158,6 @@ func (c *Client) CloseConnection(disconnectingPeer string) error{
 			break
 		}
 	}
-	return nil
-}
-
-func (c *Client) OpenConnection(connectingPort string) error{
 	return nil
 }
 
