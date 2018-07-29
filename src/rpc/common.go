@@ -16,9 +16,8 @@ type (
 
 	MessageRPC struct {
 		ConnectionRPC
-		Message    string
-		Time       time.Time
-		Recipients []node.Peer
+		Message string
+		Time    time.Time
 	}
 
 	BlocksRPC struct {

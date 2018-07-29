@@ -9,20 +9,27 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
 )
 
 type Miner struct {
-	ID                string            // i.e. Run-time port associated to container
-	blocks            []node.Block      // MINEUR-07
-	peers             []node.Peer       // Slice of peers
-	rpcHandler        *brpc.NodeRPC     // Handler for RPC requests
-	IncomingMsgChan   chan node.Message // Channel for incoming messages from other clients
-	incomingBlockChan chan node.Block   // Channel for incoming blocks from other miners
-	quit              chan bool         // Channel to cancel mining operations
-	mutex             *sync.Mutex       // Mutex for synchronization between routines
+	ID                string                  // i.e. Run-time port associated to container
+	blocks            []node.Block            // MINEUR-07
+	peers             []node.Peer             // Slice of peers
+	rpcHandler        *brpc.NodeRPC           // Handler for RPC requests
+	incomingMsgChan   chan UnprocessedMessage // Channel for incoming messages from other clients
+	incomingBlockChan chan node.Block         // Channel for incoming blocks from other miners
+	quit              chan bool               // Channel to cancel mining operations
+	mutex             *sync.Mutex             // Mutex for synchronization between routines
+	waitingList       []UnprocessedMessage
+}
+
+type UnprocessedMessage struct {
+	m      *node.Message
+	shared bool
 }
 
 func NewMiner(port string, peers []node.Peer) node.Node {
@@ -31,10 +38,11 @@ func NewMiner(port string, peers []node.Peer) node.Node {
 		make([]node.Block, node.MinBlocksReturnSize),
 		peers,
 		new(brpc.NodeRPC),
-		make(chan node.Message, node.MessagesChannelSize),
+		make(chan UnprocessedMessage, node.MessagesChannelSize),
 		make(chan node.Block, node.BlocksChannelSize),
 		make(chan bool),
 		&sync.Mutex{},
+		[]UnprocessedMessage{},
 	}
 	m.rpcHandler.Node = m
 	return m
@@ -106,7 +114,7 @@ func (m *Miner) GetBlocks() []node.Block {
 	return m.blocks
 }
 
-func (m *Miner) Broadcast(message node.Message) error {
+func (m *Miner) Broadcast(message UnprocessedMessage) error {
 	// DeliverMessage (RPC) to peers
 	// To implement
 	for _, peer := range m.peers {
@@ -114,10 +122,7 @@ func (m *Miner) Broadcast(message node.Message) error {
 		if err != nil {
 			return err
 		}
-		var me = node.Peer{
-			Host: fmt.Sprintf("node-%s", m.ID),
-			Port: m.ID}
-		args := &brpc.MessageRPC{brpc.ConnectionRPC{PeerID: m.ID}, message.Content, message.Time, append(m.peers, me)}
+		args := &brpc.MessageRPC{brpc.ConnectionRPC{PeerID: m.ID}, message.m.Content, message.m.Time}
 		var reply *int
 		err = client.Call("NodeRPC.DeliverMessage", args, &reply)
 		if err != nil {
@@ -142,14 +147,28 @@ func (m *Miner) CreateBlock() node.Block {
 	var messages [node.BlockSize]node.Message
 
 	for i := 0; i < node.BlockSize; i++ {
-		messages[i] = <-m.IncomingMsgChan
+		msg := <-m.incomingMsgChan
+		m.waitingList = append(m.waitingList, msg)
+		messages[i] = *msg.m
 	}
 
 	return node.Block{Header: header, Messages: messages}
 }
 
 func (m *Miner) ReceiveMessage(content string, temps time.Time, peer string) {
-	m.IncomingMsgChan <- node.Message{peer, content, temps}
+	//MINEUR-04
+	found := false
+	for _, m := range m.waitingList {
+		if reflect.DeepEqual(m.m, node.Message{peer, content, temps}) {
+			found = true
+			break
+		}
+	}
+	message := UnprocessedMessage{&node.Message{peer, content, temps}, true}
+	if !found {
+		m.Broadcast(message)
+	}
+	m.incomingMsgChan <- message
 }
 
 func (m *Miner) ReceiveBlock(block node.Block) {
@@ -173,6 +192,17 @@ func (m *Miner) mining() node.Block {
 		hashedHeader, _ := m.findingNounce(&block)
 		log.Println("Nounce : ", block.Header.Nounce)
 		block.Header.Hash = hashedHeader
+
+		//supprimer les messages de la waitingList
+		for _, message := range block.Messages {
+			for j, unprocMessage := range m.waitingList {
+				if reflect.DeepEqual(unprocMessage.m, message) {
+					m.waitingList = append(m.waitingList[:j], m.waitingList[j+1:]...)
+					break
+				}
+			}
+		}
+
 		return block
 	}
 }
