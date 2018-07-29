@@ -15,9 +15,8 @@ type (
 	Client struct {
 		ID          string            // i.e. Run-time port associated to container
 		blocks      []node.Block      // Can be a subset of the full chain
-		peers       []node.Peer       // Slice of peers
+		peers       []*node.Peer      // Slice of peers
 		rpcHandler  *brpc.NodeRPC     // Handler for RPC calls
-		connections []node.PeerConnection  // Slice of all current connection
 		uiChannel   chan node.Message // Channel to send message from node to chat application
 		nodeChannel chan node.Message // Channel to send message from chat application to node
 		msgLoopChan chan string
@@ -25,10 +24,8 @@ type (
 	}
 )
 
-func NewClient(port string,
-	peers []node.Peer,
-	uiChannel chan node.Message,
-	nodeChannel chan node.Message) node.Node {
+
+func NewClient(port string, peers []*node.Peer, uiChannel chan node.Message, nodeChannel chan node.Message) node.Node {
 	c := &Client{
 		port,
 		make([]node.Block, node.MinBlocksReturnSize),
@@ -60,7 +57,7 @@ func (c *Client) SetupRPC(port string) error {
 
 func (c *Client) Peer() error {
 	for _, peer := range c.peers {
-		client, err := brpc.ConnectTo(peer)
+		client, err := brpc.ConnectTo(*peer)
 		if err != nil {
 			return err
 		}
@@ -75,6 +72,7 @@ func (c *Client) Peer() error {
 			return fmt.Errorf("Returned size of blocks is below %d", node.MinBlocksReturnSize)
 		}
 		peer.Conn = client
+		log.Printf("Successfully peered with node-%s\n", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
 	}
 	return nil
 }
@@ -90,30 +88,28 @@ func (c *Client) GetBlocks() []node.Block {
 func (c *Client) Connect(anchorPort string) error {
 
 
-	anchorPeer := node.Peer{
+	anchorPeer := &node.Peer{
 		Host: fmt.Sprintf("node-%s", anchorPort),
 		Port: anchorPort}
 
 	// Connect to Anchor Miner
-	client, err := brpc.ConnectTo(anchorPeer)
+	client, err := brpc.ConnectTo(*anchorPeer)
 	if err != nil {
 		log.Printf("Error while connecting to anchor")
 		return err
 	}
 
 	// Keep connection
-	c.connections = make([]node.PeerConnection, 0)
-	var newConnection = new(node.PeerConnection)
-	newConnection.ID = anchorPeer.Port
-	newConnection.Conn = client
-	c.connections = append(c.connections, *newConnection)
+	c.peers = make([]*node.Peer, 0)
+	anchorPeer.Conn = client
+	c.peers = append(c.peers, anchorPeer)
 
 	// Request Miner to create incoming connection
 	var reply int
 	err = client.Call("NodeRPC.Connect", c.ID, &reply)
 	if err != nil{
 		log.Printf("Error while requesting connection to anchor : %s", err)
-		c.connections = nil
+		c.peers = nil
 		return err
 	}
 
