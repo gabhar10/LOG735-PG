@@ -35,7 +35,7 @@ func NewMiner(port string, peers []*node.Peer) node.Node {
 		new(brpc.NodeRPC),
 		make(chan node.Message, node.MessagesChannelSize),
 		make(chan node.Block, node.BlocksChannelSize),
-		make(chan bool),
+		make(chan bool, 1),
 		&sync.Mutex{},
 		[]node.Message{},
 	}
@@ -91,14 +91,19 @@ func (m *Miner) Peer() error {
 }
 
 func (m *Miner) BroadcastBlock([]node.Block) error {
+	if len(m.peers) == 0 {
+		return fmt.Errorf("No peers are defined")
+	}
+
 	for _, peer := range m.peers {
-		client, err := brpc.ConnectTo(*peer)
-		if err != nil {
-			return err
+		if peer.Conn == nil {
+			return fmt.Errorf("RPC connection handler of peer %s is nil", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
 		}
-		args := &brpc.BlocksRPC{ConnectionRPC: brpc.ConnectionRPC{PeerID: m.ID}, Blocks: m.blocks}
+		args := brpc.BlocksRPC{
+			ConnectionRPC: brpc.ConnectionRPC{PeerID: m.ID},
+			Blocks:        m.blocks}
 		var reply *int
-		err = client.Call("NodeRPC.DeliverBlock", args, &reply)
+		err := peer.Conn.Call("NodeRPC.DeliverBlock", &args, &reply)
 		if err != nil {
 			return err
 		}
@@ -134,7 +139,6 @@ func (m *Miner) Broadcast(message node.Message) error {
 			return err
 		}
 	}
-
 	return nil
 }
 
