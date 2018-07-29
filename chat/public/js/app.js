@@ -33,6 +33,16 @@ new Vue({
             var element = document.getElementById('chat-messages');
             element.scrollTop = element.scrollHeight; // Auto scroll to the bottom
         });
+
+        $.ajax({
+            async:false,
+            cache:false,
+            type: "GET",
+            url: "http://localhost:" + location.port + "/getID",
+            success: function(data){
+                self.pseudo = data;
+            }
+        });
     },
     methods: {
         send: function () {
@@ -45,14 +55,6 @@ new Vue({
                     ));
                 this.newMsg = ''; // Reset newMsg
             }
-        },
-        set_pseudo: function () {
-            if (!this.pseudo) {
-                Materialize.toast('You must enter a name', 2000);
-                return
-            }
-            this.pseudo = $('<p>').html(this.pseudo).text();
-            this.joined = true;
         },
         disconnect: function() {
             self = this;

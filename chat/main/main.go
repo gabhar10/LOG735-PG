@@ -52,6 +52,7 @@ func main() {
 	http.HandleFunc("/ws", handleConnections)
 	http.HandleFunc("/disconnect", handleDisconnect)
 	http.HandleFunc("/connect", handleConnect)
+	http.HandleFunc("/getID", handleGetID)
 	go handleMessages()
 
 
@@ -107,6 +108,10 @@ func handleConnect(w http.ResponseWriter, r *http.Request){
 	}
 	field := r.FormValue("anchor")
 	clientNode.Connect(field)
+}
+
+func handleGetID(w http.ResponseWriter, r *http.Request){
+	fmt.Fprint(w, os.Getenv("PORT"))
 }
 
 // Handler for all incoming message from uiChannel (Message from node)
