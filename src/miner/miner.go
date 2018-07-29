@@ -182,7 +182,7 @@ func (m Miner) Disconnect() error{
 	return nil
 }
 
-
+// Close connection of requesting peer
 func (m *Miner) CloseConnection(disconnectingPeer string) error{
 	for i := 0; i < len(m.connections); i++{
 		if m.connections[i].ID == disconnectingPeer{
@@ -195,8 +195,8 @@ func (m *Miner) CloseConnection(disconnectingPeer string) error{
 	return nil
 }
 
+// Open connection to requesting peer (Usually for 2-way communication
 func (m *Miner) OpenConnection(connectingPort string) error{
-	log.Printf("Received connection request from %s", connectingPort)
 	anchorPeer := node.Peer{
 		Host: fmt.Sprintf("node-%s", connectingPort),
 		Port: connectingPort}
