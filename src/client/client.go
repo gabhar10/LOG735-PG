@@ -21,6 +21,7 @@ type (
 		uiChannel   chan node.Message // Channel to send message from node to chat application
 		nodeChannel chan node.Message // Channel to send message from chat application to node
 		msgLoopChan chan string
+		msgLoopRunning bool
 	}
 )
 
@@ -37,13 +38,14 @@ func NewClient(port string,
 		uiChannel,
 		nodeChannel,
 		make(chan string),
+		false,
 	}
 	c.rpcHandler.Node = c
 	return c
 }
 
 func (c *Client) Start() {
-
+	go c.StartMessageLoop()
 }
 
 func (c *Client) SetupRPC(port string) error {
@@ -78,15 +80,14 @@ func (c *Client) Peer() error {
 		newConnection.ID = peer.Port
 		newConnection.Conn = client
 		c.connections = append(c.connections, *newConnection)
+
 	}
 
-	// start trafic generation
-	go c.StartMessageLoop()
 	go c.HandleUiMessage()
 	return nil
 }
 
-func (c Client) GetBlocks() []node.Block {
+func (c *Client) GetBlocks() []node.Block {
 	return c.blocks
 }
 
@@ -139,7 +140,10 @@ func (c *Client) Disconnect() error {
 		conn.Conn.Call("NodeRPC.Disconnect", c.ID, &reply)
 	}
 	c.connections = nil
-	c.msgLoopChan <- " "
+	if c.msgLoopRunning == true{
+		c.msgLoopChan <- " "
+		c.msgLoopRunning = false
+	}
 
 	return nil
 }
@@ -162,13 +166,13 @@ func (c *Client) CloseConnection(disconnectingPeer string) error{
 	return nil
 }
 
-func (c Client) ReceiveMessage(content string, temps time.Time, peer string, messageType int) {
+func (c *Client) ReceiveMessage(content string, temps time.Time, peer string, messageType int) {
 	if c.uiChannel != nil {
 		c.uiChannel <- node.Message{peer, content, temps}
 	}
 }
 
-func (c Client) HandleUiMessage() error {
+func (c *Client) HandleUiMessage() error {
 	if c.nodeChannel != nil {
 		for {
 			var msg node.Message
@@ -187,7 +191,8 @@ func (c Client) HandleUiMessage() error {
 	return nil
 }
 
-func (c Client) StartMessageLoop() error {
+func (c *Client) StartMessageLoop() error {
+	c.msgLoopRunning = true
 	for {
 		select{
 		case <- c.msgLoopChan:

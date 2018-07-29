@@ -63,6 +63,8 @@ func main() {
 		}
 	}()
 
+	clientNode.Start()
+
 	for {
 		time.Sleep(time.Hour)
 	}
