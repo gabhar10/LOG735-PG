@@ -27,12 +27,12 @@ type Message struct {
 
 // Create client node and wait for connection from port 8000
 func main() {
-	peers := []node.Peer{}
+	log.Printf("My peers are %v", os.Getenv("PEERS"))
+	peers := []*node.Peer{}
 	for _, s := range strings.Split(os.Getenv("PEERS"), " ") {
-		p := node.Peer{
+		p := &node.Peer{
 			Host: fmt.Sprintf("node-%s", s),
 			Port: s}
-
 		peers = append(peers, p)
 	}
 

@@ -20,6 +20,7 @@ const BlocksChannelSize = 10
 type Peer struct {
 	Host string
 	Port string
+	Conn *rpc.Client
 }
 
 type PeerConnection struct {
