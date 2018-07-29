@@ -81,12 +81,13 @@ for i in random.sample(MINERS, args.num_mal_miners):
 services = ''
 visjs_vertices = ''
 visjs_edges = ''
+ui_port_counter = 8000
 for i in CLIENTS:
-    services += '%s:\n  image: log735:latest\n  container_name: node-%s\n  environment:\n\
-    - PEERS=8001 %s\n    - ROLE=client\n    - PORT=%s\n  networks:\n    - blockchain\n' \
-                % (i['ID'], i['port'], " ".join(str(x) for x in i['peers']), i['port'])
+    services += '%s:\n  image: log735-chat:latest\n  container_name: node-%s\n  environment:\n\
+    - PEERS=%s\n    - ROLE=client\n    - PORT=%s\n  ports:\n    - \'%s:8000\'\n  networks:\n    - blockchain\n' \
+                % (i['ID'], i['port'], " ".join(str(x) for x in i['peers']), i['port'], ui_port_counter)
     visjs_vertices += '        {id: %s, label: \'%s\'},\n' % (i['port'], i['ID'])
-
+    ui_port_counter += 1
     for x in i['peers']:
         visjs_edges += '        {from: %s, to: %s},\n' % (i['port'], x)
 
@@ -106,10 +107,6 @@ for i in MINERS:
     for x in i['peers']:
         visjs_edges += '        {from: %s, to: %s},\n' % (i['port'], x)
 
-# Add chat container
-services += 'node-8001:\n  image: log735-chat:latest\n  container_name: chat_app\n  environment:\n\
-    - PEERS=%s\n    - ROLE=chat_interface\n    - PORT=8001\n  ports:\n    - \'8000:8000\'\n    - \'8001:8001\'\n  networks:\n    - blockchain\n' \
-% (CLIENTS[1]['port'])
 
 # Write docker-compose.yaml
 with open('docker-compose.template', 'r') as f:
