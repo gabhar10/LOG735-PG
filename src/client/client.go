@@ -16,7 +16,6 @@ type (
 		blocks      []node.Block      // Can be a subset of the full chain
 		peers       []node.Peer       // Slice of peers
 		rpcHandler  *brpc.NodeRPC     // Handler for RPC calls
-		connections []PeerConnection  // Slice of all current connection
 		uiChannel   chan node.Message // Channel to send message from node to chat application
 		nodeChannel chan node.Message // Channel to send message from chat application to node
 	}
@@ -33,7 +32,6 @@ func NewClient(port string, peers []node.Peer, uiChannel chan node.Message, node
 		make([]node.Block, node.MinBlocksReturnSize),
 		peers,
 		new(brpc.NodeRPC),
-		make([]PeerConnection, 0),
 		uiChannel,
 		nodeChannel,
 	}
@@ -73,10 +71,7 @@ func (c *Client) Peer() error {
 			return fmt.Errorf("Returned size of blocks is below %d", node.MinBlocksReturnSize)
 		}
 
-		var newConnection = new(PeerConnection)
-		newConnection.ID = peer.Host
-		newConnection.conn = client
-		c.connections = append(c.connections, *newConnection)
+		peer.Conn = client
 	}
 
 	return nil
@@ -113,10 +108,10 @@ func (c *Client) HandleUiMessage() error {
 	if c.nodeChannel != nil {
 		var msg node.Message
 		msg = <-c.nodeChannel
-		for _, conn := range c.connections {
+		for _, p := range c.peers {
 			var reply int
 			message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, msg.Content, time.Now()}
-			err := conn.conn.Call("NodeRPC.DeliverMessage", message, &reply)
+			err := p.Conn.Call("NodeRPC.DeliverMessage", message, &reply)
 			if err != nil {
 				return err
 			}
@@ -128,10 +123,10 @@ func (c *Client) HandleUiMessage() error {
 func (c *Client) StartMessageLoop() error {
 	for {
 		time.Sleep(5 * time.Second)
-		for _, conn := range c.connections {
+		for _, peer := range c.peers {
 			var reply int
 			message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, "Bonjour", time.Now()}
-			conn.conn.Call("NodeRPC.DeliverMessage", message, &reply)
+			peer.Conn.Call("NodeRPC.DeliverMessage", message, &reply)
 		}
 		if c.nodeChannel != nil {
 			c.uiChannel <- node.Message{c.ID, "Bonjour", time.Now()}
