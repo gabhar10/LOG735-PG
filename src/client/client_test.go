@@ -11,7 +11,7 @@ func TestClient_Peer(t *testing.T) {
 	type fields struct {
 		ID          string
 		blocks      []node.Block
-		peers       []node.Peer
+		peers       []*node.Peer
 		rpcHandler  *brpc.NodeRPC
 		uiChannel   chan node.Message
 		nodeChannel chan node.Message
@@ -25,11 +25,11 @@ func TestClient_Peer(t *testing.T) {
 			name: "Peer with miner",
 			fields: fields{
 				ID: "9001",
-				peers: func() []node.Peer {
+				peers: func() []*node.Peer {
 					driver := node.Peer{Host: "127.0.0.1", Port: "9001"}
-					m := miner.NewMiner("9002", []node.Peer{driver}).(*miner.Miner)
+					m := miner.NewMiner("9002", []*node.Peer{&driver}).(*miner.Miner)
 					m.SetupRPC("9002")
-					return []node.Peer{node.Peer{Host: "127.0.0.1", Port: "9002"}}
+					return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "9002"}}
 				}(),
 				uiChannel:   nil,
 				nodeChannel: nil,

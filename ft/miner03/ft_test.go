@@ -15,16 +15,16 @@ func TestMiner03(t *testing.T) {
 
 	t.Run("Send message to miner", func(t *testing.T) {
 		// Create miner
-		minerPeers := []node.Peer{
-			node.Peer{
+		minerPeers := []*node.Peer{
+			&node.Peer{
 				Host: "127.0.0.1",
 				Port: ClientID},
 		}
 		m := miner.NewMiner(MinerID, minerPeers).(*miner.Miner)
 		m.SetupRPC(MinerID)
 		// Create client
-		clientPeers := []node.Peer{
-			node.Peer{
+		clientPeers := []*node.Peer{
+			&node.Peer{
 				Host: "127.0.0.1",
 				Port: MinerID},
 		}

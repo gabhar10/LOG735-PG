@@ -16,33 +16,28 @@ import (
 )
 
 type Miner struct {
-	ID                string                  // i.e. Run-time port associated to container
-	blocks            []node.Block            // MINEUR-07
-	peers             []node.Peer             // Slice of peers
-	rpcHandler        *brpc.NodeRPC           // Handler for RPC requests
-	incomingMsgChan   chan UnprocessedMessage // Channel for incoming messages from other clients
-	incomingBlockChan chan node.Block         // Channel for incoming blocks from other miners
-	quit              chan bool               // Channel to cancel mining operations
-	mutex             *sync.Mutex             // Mutex for synchronization between routines
-	waitingList       []UnprocessedMessage
+	ID                string            // i.e. Run-time port associated to container
+	blocks            []node.Block      // MINEUR-07
+	peers             []*node.Peer      // Slice of peers
+	rpcHandler        *brpc.NodeRPC     // Handler for RPC requests
+	IncomingMsgChan   chan node.Message // Channel for incoming messages from other clients
+	incomingBlockChan chan node.Block   // Channel for incoming blocks from other miners
+	quit              chan bool         // Channel to cancel mining operations
+	mutex             *sync.Mutex       // Mutex for synchronization between routines
+	waitingList       []node.Message
 }
 
-type UnprocessedMessage struct {
-	m      *node.Message
-	shared bool
-}
-
-func NewMiner(port string, peers []node.Peer) node.Node {
+func NewMiner(port string, peers []*node.Peer) node.Node {
 	m := &Miner{
 		port,
 		make([]node.Block, node.MinBlocksReturnSize),
 		peers,
 		new(brpc.NodeRPC),
-		make(chan UnprocessedMessage, node.MessagesChannelSize),
+		make(chan node.Message, node.MessagesChannelSize),
 		make(chan node.Block, node.BlocksChannelSize),
 		make(chan bool),
 		&sync.Mutex{},
-		[]UnprocessedMessage{},
+		[]node.Message{},
 	}
 	m.rpcHandler.Node = m
 	return m
@@ -73,12 +68,13 @@ func (m *Miner) SetupRPC(port string) error {
 
 func (m *Miner) Peer() error {
 	for _, peer := range m.peers {
-		client, err := brpc.ConnectTo(peer)
+		client, err := brpc.ConnectTo(*peer)
 		if err != nil {
 			return err
 		}
 		args := &brpc.ConnectionRPC{PeerID: m.ID}
 		var reply brpc.BlocksRPC
+
 		err = client.Call("NodeRPC.Peer", args, &reply)
 		if err != nil {
 			return err
@@ -86,7 +82,9 @@ func (m *Miner) Peer() error {
 		if len(reply.Blocks) < node.MinBlocksReturnSize {
 			return fmt.Errorf("Returned size of blocks is below %d", node.MinBlocksReturnSize)
 		}
-		log.Printf("Successfully peered with node-%s\n", peer)
+
+		peer.Conn = client
+		log.Printf("Successfully peered with node-%s\n", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
 	}
 
 	return nil
@@ -94,7 +92,7 @@ func (m *Miner) Peer() error {
 
 func (m *Miner) BroadcastBlock([]node.Block) error {
 	for _, peer := range m.peers {
-		client, err := brpc.ConnectTo(peer)
+		client, err := brpc.ConnectTo(*peer)
 		if err != nil {
 			return err
 		}
@@ -114,17 +112,24 @@ func (m *Miner) GetBlocks() []node.Block {
 	return m.blocks
 }
 
-func (m *Miner) Broadcast(message UnprocessedMessage) error {
+func (m *Miner) Broadcast(message node.Message) error {
 	// DeliverMessage (RPC) to peers
 	// To implement
+
+	if len(m.peers) == 0 {
+		return fmt.Errorf("No peers are defined")
+	}
+
 	for _, peer := range m.peers {
-		client, err := brpc.ConnectTo(peer)
-		if err != nil {
-			return err
+		if peer.Conn == nil {
+			return fmt.Errorf("RPC connection handler of peer %s is nil", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
 		}
-		args := &brpc.MessageRPC{brpc.ConnectionRPC{PeerID: m.ID}, message.m.Content, message.m.Time}
+		args := brpc.MessageRPC{
+			ConnectionRPC: brpc.ConnectionRPC{PeerID: m.ID},
+			Message:       message.Content,
+			Time:          message.Time}
 		var reply *int
-		err = client.Call("NodeRPC.DeliverMessage", args, &reply)
+		err := peer.Conn.Call("NodeRPC.DeliverMessage", &args, &reply)
 		if err != nil {
 			return err
 		}
@@ -147,9 +152,9 @@ func (m *Miner) CreateBlock() node.Block {
 	var messages [node.BlockSize]node.Message
 
 	for i := 0; i < node.BlockSize; i++ {
-		msg := <-m.incomingMsgChan
+		msg := <-m.IncomingMsgChan
 		m.waitingList = append(m.waitingList, msg)
-		messages[i] = *msg.m
+		messages[i] = msg
 	}
 
 	return node.Block{Header: header, Messages: messages}
@@ -159,16 +164,16 @@ func (m *Miner) ReceiveMessage(content string, temps time.Time, peer string) {
 	//MINEUR-04
 	found := false
 	for _, m := range m.waitingList {
-		if reflect.DeepEqual(m.m, node.Message{peer, content, temps}) {
+		if reflect.DeepEqual(m, node.Message{peer, content, temps}) {
 			found = true
 			break
 		}
 	}
-	message := UnprocessedMessage{&node.Message{peer, content, temps}, true}
+	message := node.Message{peer, content, temps}
 	if !found {
 		m.Broadcast(message)
 	}
-	m.incomingMsgChan <- message
+	m.IncomingMsgChan <- message
 }
 
 func (m *Miner) ReceiveBlock(block node.Block) {
@@ -196,7 +201,7 @@ func (m *Miner) mining() node.Block {
 		//supprimer les messages de la waitingList
 		for _, message := range block.Messages {
 			for j, unprocMessage := range m.waitingList {
-				if reflect.DeepEqual(unprocMessage.m, message) {
+				if reflect.DeepEqual(unprocMessage, message) {
 					m.waitingList = append(m.waitingList[:j], m.waitingList[j+1:]...)
 					break
 				}
