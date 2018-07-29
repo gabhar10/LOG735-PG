@@ -608,3 +608,64 @@ func TestMiner_mining(t *testing.T) {
 		})
 	}
 }
+
+func TestMiner_BroadcastBlock(t *testing.T) {
+	type fields struct {
+		ID                string
+		blocks            []node.Block
+		peers             []*node.Peer
+		rpcHandler        *brpc.NodeRPC
+		IncomingMsgChan   chan node.Message
+		incomingBlockChan chan node.Block
+		quit              chan bool
+		mutex             *sync.Mutex
+		waitingList       []node.Message
+	}
+	type args struct {
+		in0 []node.Block
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "Sunny day",
+			fields: fields{
+				ID: "8000",
+				peers: func() []*node.Peer {
+					driver := node.Peer{Host: "127.0.0.1", Port: "9001"}
+					m := NewMiner("9002", []*node.Peer{&driver}).(*Miner)
+					// Given an RPC handler already exist from previous test, use it
+					if rpc.Register(m.rpcHandler) != nil {
+						return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "8888"}}
+					}
+					m.SetupRPC("9002")
+					return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "9002"}}
+				}(),
+				mutex: new(sync.Mutex),
+			},
+			args: args{
+				in0: []node.Block{
+					node.Block{
+						Header:   node.Header{},
+						Messages: [node.BlockSize]node.Message{},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := NewMiner(tt.fields.ID, tt.fields.peers).(*Miner)
+			err := m.Peer()
+			if err != nil {
+				t.Fatalf("Error while peering: %v", err)
+			}
+			if err := m.BroadcastBlock(tt.args.in0); (err != nil) != tt.wantErr {
+				t.Errorf("Miner.BroadcastBlock() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
