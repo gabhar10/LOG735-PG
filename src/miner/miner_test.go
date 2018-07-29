@@ -20,7 +20,7 @@ func TestMiner_findingNounce(t *testing.T) {
 		blocks            []node.Block
 		peers             []node.Peer
 		rpcHandler        *brpc.NodeRPC
-		incomingMsgChan   chan node.Message
+		IncomingMsgChan   chan node.Message
 		incomingBlockChan chan node.Block
 		quit              chan bool
 		mutex             *sync.Mutex
@@ -83,7 +83,7 @@ func TestMiner_findingNounce(t *testing.T) {
 				blocks:            tt.fields.blocks,
 				peers:             tt.fields.peers,
 				rpcHandler:        tt.fields.rpcHandler,
-				incomingMsgChan:   tt.fields.incomingMsgChan,
+				IncomingMsgChan:   tt.fields.IncomingMsgChan,
 				incomingBlockChan: tt.fields.incomingBlockChan,
 				quit:              tt.fields.quit,
 				mutex:             tt.fields.mutex,
@@ -110,7 +110,7 @@ func TestMiner_CreateBlock(t *testing.T) {
 		blocks            []node.Block
 		peers             []node.Peer
 		rpcHandler        *brpc.NodeRPC
-		incomingMsgChan   chan node.Message
+		IncomingMsgChan   chan node.Message
 		incomingBlockChan chan node.Block
 		quit              chan bool
 		mutex             *sync.Mutex
@@ -147,7 +147,7 @@ func TestMiner_CreateBlock(t *testing.T) {
 	}
 	for _, tt := range tests {
 		for i := 0; i < node.BlockSize; i++ {
-			tt.fields.incomingMsgChan <- node.Message{
+			tt.fields.IncomingMsgChan <- node.Message{
 				Peer:    "",
 				Content: "Salut!",
 				Time:    time.Date(2018, 7, 15, 8, 0, 0, 0, time.UTC),
@@ -159,7 +159,7 @@ func TestMiner_CreateBlock(t *testing.T) {
 				blocks:            tt.fields.blocks,
 				peers:             tt.fields.peers,
 				rpcHandler:        tt.fields.rpcHandler,
-				incomingMsgChan:   tt.fields.incomingMsgChan,
+				IncomingMsgChan:   tt.fields.IncomingMsgChan,
 				incomingBlockChan: tt.fields.incomingBlockChan,
 				quit:              tt.fields.quit,
 				mutex:             tt.fields.mutex,
@@ -202,7 +202,7 @@ func TestNewMiner(t *testing.T) {
 				if miner.ID != tt.args.port || len(miner.peers) != 1 || miner.peers[0] != tt.args.peers[0] {
 					t.Errorf("NewMiner() did not populate with port %s and peers %s", tt.args.port, tt.args.peers)
 				}
-				if cap(miner.blocks) != node.MinBlocksReturnSize || cap(miner.incomingMsgChan) != node.MessagesChannelSize || cap(miner.incomingBlockChan) != node.BlocksChannelSize {
+				if cap(miner.blocks) != node.MinBlocksReturnSize || cap(miner.IncomingMsgChan) != node.MessagesChannelSize || cap(miner.incomingBlockChan) != node.BlocksChannelSize {
 					t.Errorf("NewMiner() did not return a miner with attributes of proper length")
 				}
 			} else {
@@ -218,7 +218,7 @@ func TestMiner_Start(t *testing.T) {
 		blocks            []node.Block
 		peers             []node.Peer
 		rpcHandler        *brpc.NodeRPC
-		incomingMsgChan   chan node.Message
+		IncomingMsgChan   chan node.Message
 		incomingBlockChan chan node.Block
 		quit              chan bool
 		mutex             *sync.Mutex
@@ -241,7 +241,7 @@ func TestMiner_Start(t *testing.T) {
 				blocks:            tt.fields.blocks,
 				peers:             tt.fields.peers,
 				rpcHandler:        tt.fields.rpcHandler,
-				incomingMsgChan:   tt.fields.incomingMsgChan,
+				IncomingMsgChan:   tt.fields.IncomingMsgChan,
 				incomingBlockChan: tt.fields.incomingBlockChan,
 				quit:              tt.fields.quit,
 				mutex:             tt.fields.mutex,
@@ -416,41 +416,40 @@ func TestMiner_ReceiveMessage(t *testing.T) {
 		content string
 		temps   time.Time
 		peer    string
+		messageType int
 	}
 	tests := []struct {
 		name   string
 		fields fields
-		args   args
+		args   []args
 	}{
 		{
-			name: "Sunny day",
+			name: fmt.Sprintf("Send %v messages to miner", node.MessagesChannelSize/2),
 			fields: fields{
-				incomingMsgChan: make(chan node.Message, 1),
-				mutex:           new(sync.Mutex),
+				ID:    "123",
+				peers: []node.Peer{},
 			},
-			args: args{
-				content: "Hello",
-				temps:   time.Now(),
-				peer:    "",
-			},
+			args: func() []args {
+				msgs := make([]args, node.MessagesChannelSize/2)
+				for i := 0; i < node.MessagesChannelSize/2; i++ {
+					msgs = append(msgs, args{"Hello", time.Now(), "", brpc.MessageType})
+				}
+				return msgs
+			}(),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := &Miner{
-				ID:                tt.fields.ID,
-				blocks:            tt.fields.blocks,
-				peers:             tt.fields.peers,
-				rpcHandler:        tt.fields.rpcHandler,
-				incomingMsgChan:   tt.fields.incomingMsgChan,
-				incomingBlockChan: tt.fields.incomingBlockChan,
-				quit:              tt.fields.quit,
-				mutex:             tt.fields.mutex,
+			m := NewMiner(tt.fields.ID, tt.fields.peers).(*Miner)
+			for _, a := range tt.args {
+				m.ReceiveMessage(a.content, a.temps, a.peer, a.messageType)
 			}
-			m.ReceiveMessage(tt.args.content, tt.args.temps, tt.args.peer, brpc.MessageType)
-			mes := <-m.incomingMsgChan
-			if mes.Content != tt.args.content || mes.Time.After(time.Now()) {
-				t.Errorf("Miner.ReceiveMessage() did not return expected values: ")
+
+			for i := 0; i < node.MessagesChannelSize/2; i++ {
+				mes := <-m.IncomingMsgChan
+				if mes.Content != tt.args[i].content || mes.Time.After(time.Now()) {
+					t.Errorf("Miner.ReceiveMessage() did not return expected values: ")
+				}
 			}
 		})
 	}
@@ -462,7 +461,7 @@ func TestMiner_ReceiveBlock(t *testing.T) {
 		blocks            []node.Block
 		peers             []node.Peer
 		rpcHandler        *brpc.NodeRPC
-		incomingMsgChan   chan node.Message
+		IncomingMsgChan   chan node.Message
 		incomingBlockChan chan node.Block
 		quit              chan bool
 		mutex             *sync.Mutex
@@ -490,7 +489,7 @@ func TestMiner_ReceiveBlock(t *testing.T) {
 				blocks:            tt.fields.blocks,
 				peers:             tt.fields.peers,
 				rpcHandler:        tt.fields.rpcHandler,
-				incomingMsgChan:   tt.fields.incomingMsgChan,
+				IncomingMsgChan:   tt.fields.IncomingMsgChan,
 				incomingBlockChan: tt.fields.incomingBlockChan,
 				quit:              tt.fields.quit,
 				mutex:             tt.fields.mutex,
@@ -506,7 +505,7 @@ func TestMiner_mining(t *testing.T) {
 		blocks            []node.Block
 		peers             []node.Peer
 		rpcHandler        *brpc.NodeRPC
-		incomingMsgChan   chan node.Message
+		IncomingMsgChan   chan node.Message
 		incomingBlockChan chan node.Block
 		quit              chan bool
 		mutex             *sync.Mutex
@@ -562,7 +561,7 @@ func TestMiner_mining(t *testing.T) {
 				blocks:            tt.fields.blocks,
 				peers:             tt.fields.peers,
 				rpcHandler:        tt.fields.rpcHandler,
-				incomingMsgChan:   tt.fields.incomingMsgChan,
+				IncomingMsgChan:   tt.fields.IncomingMsgChan,
 				incomingBlockChan: tt.fields.incomingBlockChan,
 				quit:              tt.fields.quit,
 				mutex:             tt.fields.mutex,
@@ -570,7 +569,7 @@ func TestMiner_mining(t *testing.T) {
 			// Send messages in go routine
 			go func() {
 				for i := 0; i < node.BlockSize; i++ {
-					m.incomingMsgChan <- node.Message{
+					m.IncomingMsgChan <- node.Message{
 						Content: "Salut!",
 						Time:    time.Date(2018, 7, 15, 8, 0, 0, 0, time.UTC)}
 				}

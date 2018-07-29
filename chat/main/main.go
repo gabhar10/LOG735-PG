@@ -93,7 +93,8 @@ func handleConnections(w http.ResponseWriter, r *http.Request){
 			break
 		}
 		uiChannel <- msg
-		nodeChannel <- msg
+		var client = clientNode.(*client.Client)
+		client.HandleUiMessage(msg)
 	}
 }
 

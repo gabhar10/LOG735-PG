@@ -20,7 +20,7 @@ type Miner struct {
 	peers             []node.Peer       // Slice of peers
 	connections 	  []node.PeerConnection  // Slice of all current connection
 	rpcHandler        *brpc.NodeRPC     // Handler for RPC requests
-	incomingMsgChan   chan node.Message // Channel for incoming messages from other clients
+	IncomingMsgChan   chan node.Message // Channel for incoming messages from other clients
 	incomingBlockChan chan node.Block   // Channel for incoming blocks from other miners
 	quit              chan bool         // Channel to cancel mining operations
 	mutex             *sync.Mutex       // Mutex for synchronization between routines
@@ -121,14 +121,14 @@ func (m *Miner) CreateBlock() node.Block {
 	var messages [node.BlockSize]node.Message
 
 	for i := 0; i < node.BlockSize; i++ {
-		messages[i] = <-m.incomingMsgChan
+		messages[i] = <-m.IncomingMsgChan
 	}
 
 	return node.Block{Header: header, Messages: messages}
 }
 
 func (m *Miner) ReceiveMessage(content string, temps time.Time, peer string, messageType int) {
-	m.incomingMsgChan <- node.Message{peer, content, temps}
+	m.IncomingMsgChan <- node.Message{peer, content, temps}
 }
 
 func (m *Miner) ReceiveBlock(block node.Block) {

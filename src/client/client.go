@@ -83,7 +83,6 @@ func (c *Client) Peer() error {
 
 	}
 
-	go c.HandleUiMessage()
 	return nil
 }
 
@@ -172,20 +171,15 @@ func (c *Client) ReceiveMessage(content string, temps time.Time, peer string, me
 	}
 }
 
-func (c *Client) HandleUiMessage() error {
-	if c.nodeChannel != nil {
-		for {
-			var msg node.Message
-			msg = <-c.nodeChannel
-			for _, conn := range c.connections {
-				var reply int
-				message := brpc.MessageRPC{
-					brpc.ConnectionRPC{c.ID},
-					msg.Content,
-					time.Now(),
-					brpc.MessageType}
-				conn.Conn.Call("NodeRPC.DeliverMessage", message, &reply)
-			}
+func (c *Client) HandleUiMessage(message node.Message) error {
+
+	var msg node.Message
+	for _, conn := range c.connections {
+		var reply int
+		message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, msg.Content, time.Now(), brpc.MessageType}
+		err := conn.Conn.Call("NodeRPC.DeliverMessage", message, &reply)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -217,6 +211,6 @@ func (c *Client) StartMessageLoop() error {
 	return nil
 }
 
-func (c Client) ReceiveBlock(block node.Block) {
+func (c *Client) ReceiveBlock(block node.Block) {
 	// Do nothing
 }
