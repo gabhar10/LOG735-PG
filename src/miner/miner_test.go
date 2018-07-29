@@ -447,7 +447,7 @@ func TestMiner_ReceiveMessage(t *testing.T) {
 				quit:              tt.fields.quit,
 				mutex:             tt.fields.mutex,
 			}
-			m.ReceiveMessage(tt.args.content, tt.args.temps, tt.args.peer)
+			m.ReceiveMessage(tt.args.content, tt.args.temps, tt.args.peer, brpc.MessageType)
 			mes := <-m.incomingMsgChan
 			if mes.Content != tt.args.content || mes.Time.After(time.Now()) {
 				t.Errorf("Miner.ReceiveMessage() did not return expected values: ")

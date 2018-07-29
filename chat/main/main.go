@@ -97,7 +97,13 @@ func handleConnections(w http.ResponseWriter, r *http.Request){
 
 // Handler if user want's to Disconnect
 func handleDisconnect(w http.ResponseWriter, r *http.Request){
-	clientNode.Disconnect()
+	err := clientNode.Disconnect()
+	if err != nil {
+		http.Error(w, "Error during disconnection", 500)
+		return
+	}else{
+		fmt.Fprint(w, " ")
+	}
 }
 
 // Handler if user wants to connect to Anchor Miner
@@ -107,6 +113,10 @@ func handleConnect(w http.ResponseWriter, r *http.Request){
 		return
 	}
 	field := r.FormValue("anchor")
+	if field == os.Getenv("PORT") {
+		http.Error(w, "Cannot connect to yourself", 500)
+		return
+	}
 	clientNode.Connect(field)
 }
 

@@ -65,6 +65,7 @@ new Vue({
                 url: "http://localhost:" + location.port + "/disconnect",
                 success: function(data){
                     self.connected = false;
+                    self.chatContent = '';
                 },
                 error: function(XMLHttpRequest, textStatus, errorThrown) {
                     alert("Status: " + textStatus); alert("Error: " + errorThrown);

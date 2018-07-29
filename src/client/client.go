@@ -83,7 +83,6 @@ func (c *Client) Peer() error {
 	// start trafic generation
 	go c.StartMessageLoop()
 	go c.HandleUiMessage()
-	//go c.Disconnect()
 	return nil
 }
 
@@ -134,6 +133,7 @@ func (c *Client) Connect(anchorPort string) error {
 // Ask all node to close connection and erase current connection slice
 func (c *Client) Disconnect() error {
 
+	log.Printf("Disconnecting from network")
 	for _, conn := range c.connections {
 		var reply int
 		conn.Conn.Call("NodeRPC.Disconnect", c.ID, &reply)
@@ -162,7 +162,7 @@ func (c *Client) CloseConnection(disconnectingPeer string) error{
 	return nil
 }
 
-func (c Client) ReceiveMessage(content string, temps time.Time, peer string) {
+func (c Client) ReceiveMessage(content string, temps time.Time, peer string, messageType int) {
 	if c.uiChannel != nil {
 		c.uiChannel <- node.Message{peer, content, temps}
 	}
@@ -175,7 +175,11 @@ func (c Client) HandleUiMessage() error {
 			msg = <-c.nodeChannel
 			for _, conn := range c.connections {
 				var reply int
-				message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, msg.Content, time.Now()}
+				message := brpc.MessageRPC{
+					brpc.ConnectionRPC{c.ID},
+					msg.Content,
+					time.Now(),
+					brpc.MessageType}
 				conn.Conn.Call("NodeRPC.DeliverMessage", message, &reply)
 			}
 		}
@@ -192,7 +196,11 @@ func (c Client) StartMessageLoop() error {
 			time.Sleep(5 * time.Second)
 			for _, conn := range c.connections {
 				var reply int
-				message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, "Bonjour", time.Now()}
+				message := brpc.MessageRPC{
+					brpc.ConnectionRPC{c.ID},
+					"Bonjour",
+					time.Now(),
+					brpc.MessageType}
 				conn.Conn.Call("NodeRPC.DeliverMessage", message, &reply)
 			}
 			if c.nodeChannel != nil {

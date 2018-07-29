@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+const MessageType = 0
+const DisconnectionType = 1
+const ConnectionType = 2
+
 type (
 	ConnectionRPC struct {
 		PeerID string
@@ -16,8 +20,11 @@ type (
 
 	MessageRPC struct {
 		ConnectionRPC
-		Message string
-		Time    time.Time
+		Message 		string
+		Time    		time.Time
+		MessageType 	int	// Indicates if message is chat message [0],
+							// Disconnection of a peer [1] or
+							// Connection of peer [2]
 	}
 
 	BlocksRPC struct {

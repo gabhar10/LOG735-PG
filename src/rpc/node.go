@@ -31,7 +31,7 @@ func (n *NodeRPC) DeliverMessage(args *MessageRPC, reply *int) error {
 	// Upon reception of message by a client
 	// MINEUR-03
 	// CLIENT-07
-	n.Node.ReceiveMessage(args.Message, args.Time, args.PeerID)
+	n.Node.ReceiveMessage(args.Message, args.Time, args.PeerID, args.MessageType)
 	return nil
 }
 

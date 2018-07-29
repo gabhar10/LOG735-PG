@@ -127,7 +127,7 @@ func (m *Miner) CreateBlock() node.Block {
 	return node.Block{Header: header, Messages: messages}
 }
 
-func (m *Miner) ReceiveMessage(content string, temps time.Time, peer string) {
+func (m *Miner) ReceiveMessage(content string, temps time.Time, peer string, messageType int) {
 	m.incomingMsgChan <- node.Message{peer, content, temps}
 }
 
@@ -186,10 +186,19 @@ func (m Miner) Disconnect() error{
 func (m *Miner) CloseConnection(disconnectingPeer string) error{
 	for i := 0; i < len(m.connections); i++{
 		if m.connections[i].ID == disconnectingPeer{
+			log.Printf("Closing connection with %s", disconnectingPeer)
 			m.connections[i].Conn.Close()
 			m.connections[i] = m.connections[len(m.connections)-1]
 			m.connections = m.connections[:len(m.connections)-1]
 			break
+		}else{
+			disconnectionNotice := brpc.MessageRPC{
+				brpc.ConnectionRPC{m.ID},
+				disconnectingPeer,
+				time.Now(),
+				brpc.DisconnectionType}
+			var reply int
+			m.connections[i].Conn.Call("NodeRPC.DeliverMessage", disconnectionNotice, &reply)
 		}
 	}
 	return nil
@@ -203,6 +212,7 @@ func (m *Miner) OpenConnection(connectingPort string) error{
 
 	client, err := brpc.ConnectTo(anchorPeer)
 	if err != nil {
+		log.Printf("Error while connecting to requesting peer %s", connectingPort)
 		return err
 	}
 	log.Printf("Successfully peered with node-%s\n", connectingPort)
