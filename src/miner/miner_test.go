@@ -18,7 +18,7 @@ func TestMiner_findingNounce(t *testing.T) {
 	type fields struct {
 		ID                string
 		blocks            []node.Block
-		peers             []node.Peer
+		peers             []*node.Peer
 		rpcHandler        *brpc.NodeRPC
 		IncomingMsgChan   chan node.Message
 		incomingBlockChan chan node.Block
@@ -40,7 +40,7 @@ func TestMiner_findingNounce(t *testing.T) {
 			fields: fields{
 				"1",
 				make([]node.Block, 2),
-				make([]node.Peer, 1),
+				make([]*node.Peer, 1),
 				nil,
 				make(chan node.Message, 100),
 				make(chan node.Block, 10),
@@ -108,7 +108,7 @@ func TestMiner_CreateBlock(t *testing.T) {
 	type fields struct {
 		ID                string
 		blocks            []node.Block
-		peers             []node.Peer
+		peers             []*node.Peer
 		rpcHandler        *brpc.NodeRPC
 		IncomingMsgChan   chan node.Message
 		incomingBlockChan chan node.Block
@@ -125,7 +125,7 @@ func TestMiner_CreateBlock(t *testing.T) {
 			fields{
 				"1",
 				make([]node.Block, 2),
-				make([]node.Peer, 1),
+				make([]*node.Peer, 1),
 				nil,
 				make(chan node.Message, 100),
 				make(chan node.Block, 10),
@@ -175,7 +175,7 @@ func TestMiner_CreateBlock(t *testing.T) {
 func TestNewMiner(t *testing.T) {
 	type args struct {
 		port  string
-		peers []node.Peer
+		peers []*node.Peer
 	}
 	tests := []struct {
 		name string
@@ -185,8 +185,8 @@ func TestNewMiner(t *testing.T) {
 			name: "sunny day",
 			args: args{
 				port: "123",
-				peers: []node.Peer{
-					node.Peer{
+				peers: []*node.Peer{
+					&node.Peer{
 						Host: "456",
 						Port: "123",
 					},
@@ -200,7 +200,7 @@ func TestNewMiner(t *testing.T) {
 			miner, ok := got.(*Miner)
 			if ok {
 				if miner.ID != tt.args.port || len(miner.peers) != 1 || miner.peers[0] != tt.args.peers[0] {
-					t.Errorf("NewMiner() did not populate with port %s and peers %s", tt.args.port, tt.args.peers)
+					t.Errorf("NewMiner() did not populate with port %s and peers %v", tt.args.port, tt.args.peers)
 				}
 				if cap(miner.blocks) != node.MinBlocksReturnSize || cap(miner.IncomingMsgChan) != node.MessagesChannelSize || cap(miner.incomingBlockChan) != node.BlocksChannelSize {
 					t.Errorf("NewMiner() did not return a miner with attributes of proper length")
@@ -216,7 +216,7 @@ func TestMiner_Start(t *testing.T) {
 	type fields struct {
 		ID                string
 		blocks            []node.Block
-		peers             []node.Peer
+		peers             []*node.Peer
 		rpcHandler        *brpc.NodeRPC
 		IncomingMsgChan   chan node.Message
 		incomingBlockChan chan node.Block
@@ -302,7 +302,7 @@ func TestMiner_SetupRPC(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.preFunc()
-			m := NewMiner(tt.args.port, []node.Peer{})
+			m := NewMiner(tt.args.port, []*node.Peer{})
 			if err := m.SetupRPC(tt.args.port); (err != nil) != tt.wantErr {
 				t.Errorf("Miner.SetupRPC() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -315,7 +315,7 @@ func TestMiner_Peer(t *testing.T) {
 	type fields struct {
 		ID                string
 		blocks            []node.Block
-		peers             []node.Peer
+		peers             []*node.Peer
 		rpcHandler        *brpc.NodeRPC
 		incomingMsgChan   chan node.Message
 		incomingBlockChan chan node.Block
@@ -331,15 +331,15 @@ func TestMiner_Peer(t *testing.T) {
 			name: "Sunny day",
 			fields: fields{
 				ID: "9001",
-				peers: func() []node.Peer {
+				peers: func() []*node.Peer {
 					driver := node.Peer{Host: "127.0.0.1", Port: "9001"}
-					m := NewMiner("9002", []node.Peer{driver}).(*Miner)
+					m := NewMiner("9002", []*node.Peer{&driver}).(*Miner)
 					// Given an RPC handler already exist from previous test, use it
 					if rpc.Register(m.rpcHandler) != nil {
-						return []node.Peer{node.Peer{Host: "127.0.0.1", Port: "8888"}}
+						return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "8888"}}
 					}
 					m.SetupRPC("9002")
-					return []node.Peer{node.Peer{Host: "127.0.0.1", Port: "9002"}}
+					return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "9002"}}
 				}(),
 				mutex: new(sync.Mutex),
 			},
@@ -349,7 +349,7 @@ func TestMiner_Peer(t *testing.T) {
 			name: "Can't connect",
 			fields: fields{
 				ID:    "9001",
-				peers: []node.Peer{node.Peer{Host: "127.0.0.1", Port: "9003"}},
+				peers: []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "9003"}},
 				mutex: new(sync.Mutex),
 			},
 			wantErr: true,
@@ -369,24 +369,43 @@ func TestMiner_Broadcast(t *testing.T) {
 	type fields struct {
 		ID                string
 		blocks            []node.Block
-		peers             []node.Peer
+		peers             []*node.Peer
 		rpcHandler        *brpc.NodeRPC
 		incomingMsgChan   chan node.Message
 		incomingBlockChan chan node.Block
 		quit              chan bool
 		mutex             *sync.Mutex
 	}
+	type args struct {
+		message node.Message
+	}
 	tests := []struct {
 		name    string
 		fields  fields
+		args    args
 		wantErr bool
 	}{
 		{
 			name: "Sunny day",
 			fields: fields{
-				ID:    "8999",
-				peers: []node.Peer{},
+				ID: "8000",
+				peers: func() []*node.Peer {
+					driver := node.Peer{Host: "127.0.0.1", Port: "9001"}
+					m := NewMiner("9002", []*node.Peer{&driver}).(*Miner)
+					// Given an RPC handler already exist from previous test, use it
+					if rpc.Register(m.rpcHandler) != nil {
+						return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "8888"}}
+					}
+					m.SetupRPC("9002")
+					return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "9002"}}
+				}(),
 				mutex: new(sync.Mutex),
+			},
+			args: args{
+				message: node.Message{
+					Peer:    "8001",
+					Content: "This is a test",
+					Time:    time.Now()},
 			},
 			wantErr: false,
 		},
@@ -394,7 +413,11 @@ func TestMiner_Broadcast(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := NewMiner(tt.fields.ID, tt.fields.peers).(*Miner)
-			if err := m.Broadcast(); (err != nil) != tt.wantErr {
+			err := m.Peer()
+			if err != nil {
+				t.Fatalf("Error while peering: %v", err)
+			}
+			if err := m.Broadcast(tt.args.message); (err != nil) != tt.wantErr {
 				t.Errorf("Miner.Broadcast() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -405,7 +428,7 @@ func TestMiner_ReceiveMessage(t *testing.T) {
 	type fields struct {
 		ID                string
 		blocks            []node.Block
-		peers             []node.Peer
+		peers             []*node.Peer
 		rpcHandler        *brpc.NodeRPC
 		incomingMsgChan   chan node.Message
 		incomingBlockChan chan node.Block
@@ -426,7 +449,7 @@ func TestMiner_ReceiveMessage(t *testing.T) {
 			name: fmt.Sprintf("Send %v messages to miner", node.MessagesChannelSize/2),
 			fields: fields{
 				ID:    "123",
-				peers: []node.Peer{},
+				peers: []*node.Peer{},
 			},
 			args: func() []args {
 				msgs := make([]args, node.MessagesChannelSize/2)
@@ -458,7 +481,7 @@ func TestMiner_ReceiveBlock(t *testing.T) {
 	type fields struct {
 		ID                string
 		blocks            []node.Block
-		peers             []node.Peer
+		peers             []*node.Peer
 		rpcHandler        *brpc.NodeRPC
 		IncomingMsgChan   chan node.Message
 		incomingBlockChan chan node.Block
@@ -502,7 +525,7 @@ func TestMiner_mining(t *testing.T) {
 	type fields struct {
 		ID                string
 		blocks            []node.Block
-		peers             []node.Peer
+		peers             []*node.Peer
 		rpcHandler        *brpc.NodeRPC
 		IncomingMsgChan   chan node.Message
 		incomingBlockChan chan node.Block
@@ -519,7 +542,7 @@ func TestMiner_mining(t *testing.T) {
 			fields: fields{
 				"1",
 				make([]node.Block, 2),
-				make([]node.Peer, 1),
+				make([]*node.Peer, 1),
 				nil,
 				make(chan node.Message, node.MessagesChannelSize),
 				make(chan node.Block, node.BlocksChannelSize),
@@ -539,7 +562,7 @@ func TestMiner_mining(t *testing.T) {
 			fields: fields{
 				"1",
 				make([]node.Block, 2),
-				make([]node.Peer, 1),
+				make([]*node.Peer, 1),
 				nil,
 				make(chan node.Message, node.MessagesChannelSize),
 				make(chan node.Block, node.BlocksChannelSize),

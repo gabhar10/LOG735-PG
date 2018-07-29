@@ -24,13 +24,13 @@ func main() {
 	var n node.Node
 	role := os.Getenv("ROLE")
 
-	peers := []node.Peer{}
+	peers := []*node.Peer{}
 	for _, s := range strings.Split(os.Getenv("PEERS"), " ") {
 		p := node.Peer{
 			Host: fmt.Sprintf("node-%s", s),
 			Port: s}
 
-		peers = append(peers, p)
+		peers = append(peers, &p)
 	}
 
 	switch role {

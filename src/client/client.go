@@ -4,6 +4,7 @@ import (
 	"LOG735-PG/src/node"
 	brpc "LOG735-PG/src/rpc"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"net/rpc"
@@ -14,7 +15,7 @@ type (
 	Client struct {
 		ID          string            // i.e. Run-time port associated to container
 		blocks      []node.Block      // Can be a subset of the full chain
-		peers       []node.Peer       // Slice of peers
+		peers       []*node.Peer      // Slice of peers
 		rpcHandler  *brpc.NodeRPC     // Handler for RPC calls
 		uiChannel   chan node.Message // Channel to send message from node to chat application
 		nodeChannel chan node.Message // Channel to send message from chat application to node
@@ -26,7 +27,7 @@ type (
 	}
 )
 
-func NewClient(port string, peers []node.Peer, uiChannel chan node.Message, nodeChannel chan node.Message) node.Node {
+func NewClient(port string, peers []*node.Peer, uiChannel chan node.Message, nodeChannel chan node.Message) node.Node {
 	c := &Client{
 		port,
 		make([]node.Block, node.MinBlocksReturnSize),
@@ -56,7 +57,7 @@ func (c *Client) SetupRPC(port string) error {
 
 func (c *Client) Peer() error {
 	for _, peer := range c.peers {
-		client, err := brpc.ConnectTo(peer)
+		client, err := brpc.ConnectTo(*peer)
 		if err != nil {
 			return err
 		}
@@ -72,6 +73,7 @@ func (c *Client) Peer() error {
 		}
 
 		peer.Conn = client
+		log.Printf("Successfully peered with node-%s\n", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
 	}
 
 	return nil
