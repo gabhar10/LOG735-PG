@@ -38,7 +38,7 @@ func NewMiner(port string, peers []*node.Peer) node.Node {
 		new(brpc.NodeRPC),
 		make(chan node.Message, node.MessagesChannelSize),
 		make(chan node.Block, node.BlocksChannelSize),
-		make(chan bool),
+		make(chan bool, 1),
 		&sync.Mutex{},
 		[]node.Message{},
 	}
@@ -55,6 +55,7 @@ func (m *Miner) Start() {
 		m.blocks = append(m.blocks, block)
 		//MINEUR-06
 		m.BroadcastBlock(m.blocks)
+		m.clearProcessedMessages(&block)
 	}()
 }
 
@@ -109,17 +110,25 @@ func (m *Miner) Peer() error {
 }
 
 func (m *Miner) BroadcastBlock([]node.Block) error {
+
 	log.Println("Entering BroadcastBlock()")
 	defer log.Println("Leaving BroadcastBlock()")
 
+
+	if len(m.Peers) == 0 {
+		return fmt.Errorf("No peers are defined")
+	}
+
 	for _, peer := range m.Peers {
-		client, err := brpc.ConnectTo(*peer)
-		if err != nil {
-			return err
+		if peer.Conn == nil {
+			return fmt.Errorf("RPC connection handler of peer %s is nil", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
+
 		}
-		args := &brpc.BlocksRPC{ConnectionRPC: brpc.ConnectionRPC{PeerID: m.ID}, Blocks: m.blocks}
+		args := brpc.BlocksRPC{
+			ConnectionRPC: brpc.ConnectionRPC{PeerID: m.ID},
+			Blocks:        m.blocks}
 		var reply *int
-		err = client.Call("NodeRPC.DeliverBlock", args, &reply)
+		err := peer.Conn.Call("NodeRPC.DeliverBlock", &args, &reply)
 		if err != nil {
 			return err
 		}
@@ -160,7 +169,6 @@ func (m *Miner) Broadcast(message node.Message) error {
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -194,17 +202,16 @@ func (m *Miner) ReceiveMessage(content string, temps time.Time, peer string, mes
 
 	//MINEUR-04
 
-	found := false
+	// Check if we don't alrady have the message in the waiting list
+
 	for _, m := range m.waitingList {
 		if reflect.DeepEqual(m, node.Message{peer, content, temps}) {
-			found = true
-			break
+			return
 		}
 	}
+
 	message := node.Message{peer, content, temps}
-	if !found {
-		m.Broadcast(message)
-	}
+	m.Broadcast(message)
 	m.IncomingMsgChan <- message
 }
 
@@ -236,16 +243,6 @@ func (m *Miner) mining() node.Block {
 		log.Println("Nounce : ", block.Header.Nounce)
 		block.Header.Hash = hashedHeader
 
-		//supprimer les messages de la waitingList
-		for _, message := range block.Messages {
-			for j, unprocMessage := range m.waitingList {
-				if reflect.DeepEqual(unprocMessage, message) {
-					m.waitingList = append(m.waitingList[:j], m.waitingList[j+1:]...)
-					break
-				}
-			}
-		}
-
 		return block
 	}
 }
@@ -276,6 +273,7 @@ findingNounce:
 	}
 	return hashedHeader, nil
 }
+
 
 func (m Miner) Disconnect() error {
 	log.Println("Entering Disconnect()")
@@ -328,4 +326,16 @@ func (m *Miner) OpenConnection(connectingPort string) error {
 	m.Peers = append(m.Peers, anchorPeer)
 
 	return nil
+}
+
+func (m *Miner) clearProcessedMessages(block *node.Block) {
+	//supprimer les messages de la waitingList
+	for _, message := range block.Messages {
+		for j, unprocMessage := range m.waitingList {
+			if reflect.DeepEqual(unprocMessage, message) {
+				m.waitingList = append(m.waitingList[:j], m.waitingList[j+1:]...)
+				break
+			}
+		}
+	}
 }

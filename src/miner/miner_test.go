@@ -609,3 +609,138 @@ func TestMiner_mining(t *testing.T) {
 		})
 	}
 }
+
+func TestMiner_BroadcastBlock(t *testing.T) {
+	type fields struct {
+		ID                string
+		blocks            []node.Block
+		peers             []*node.Peer
+		rpcHandler        *brpc.NodeRPC
+		IncomingMsgChan   chan node.Message
+		incomingBlockChan chan node.Block
+		quit              chan bool
+		mutex             *sync.Mutex
+		waitingList       []node.Message
+	}
+	type args struct {
+		in0 []node.Block
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "Sunny day",
+			fields: fields{
+				ID: "8000",
+				peers: func() []*node.Peer {
+					driver := node.Peer{Host: "127.0.0.1", Port: "9001"}
+					m := NewMiner("9002", []*node.Peer{&driver}).(*Miner)
+					// Given an RPC handler already exist from previous test, use it
+					if rpc.Register(m.rpcHandler) != nil {
+						return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "8888"}}
+					}
+					m.SetupRPC("9002")
+					return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "9002"}}
+				}(),
+				mutex: new(sync.Mutex),
+			},
+			args: args{
+				in0: []node.Block{
+					node.Block{
+						Header:   node.Header{},
+						Messages: [node.BlockSize]node.Message{},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := NewMiner(tt.fields.ID, tt.fields.peers).(*Miner)
+			err := m.Peer()
+			if err != nil {
+				t.Fatalf("Error while peering: %v", err)
+			}
+			if err := m.BroadcastBlock(tt.args.in0); (err != nil) != tt.wantErr {
+				t.Errorf("Miner.BroadcastBlock() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestMiner_clearProcessedMessages(t *testing.T) {
+	type fields struct {
+		ID                string
+		blocks            []node.Block
+		peers             []*node.Peer
+		rpcHandler        *brpc.NodeRPC
+		IncomingMsgChan   chan node.Message
+		incomingBlockChan chan node.Block
+		quit              chan bool
+		mutex             *sync.Mutex
+		waitingList       []node.Message
+	}
+	type args struct {
+		block *node.Block
+	}
+
+	commonMessages := []node.Message{}
+	for i := 0; i < 5; i++ {
+		commonMessages = append(commonMessages, node.Message{Peer: "123", Content: "Common message", Time: time.Now()})
+	}
+
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "Sunny day",
+			fields: fields{
+				ID:          "123",
+				peers:       []*node.Peer{},
+				waitingList: commonMessages,
+			},
+			args: args{
+				block: func() *node.Block {
+					m := NewMiner("456", []*node.Peer{}).(*Miner)
+					// Append common messages in queue
+					for _, msg := range commonMessages {
+						m.IncomingMsgChan <- msg
+					}
+
+					for i := 0; i < 30; i++ {
+						m.IncomingMsgChan <- node.Message{
+							Peer:    "123",
+							Content: "This is a test",
+							Time:    time.Now()}
+					}
+					b := m.mining()
+					return &b
+				}(),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := &Miner{
+				ID:                tt.fields.ID,
+				blocks:            tt.fields.blocks,
+				Peers:             tt.fields.peers,
+				rpcHandler:        tt.fields.rpcHandler,
+				IncomingMsgChan:   tt.fields.IncomingMsgChan,
+				incomingBlockChan: tt.fields.incomingBlockChan,
+				quit:              tt.fields.quit,
+				mutex:             tt.fields.mutex,
+				waitingList:       tt.fields.waitingList,
+			}
+			m.clearProcessedMessages(tt.args.block)
+			if len(m.waitingList) > 0 {
+				t.Fatalf("Waiting list should be empty")
+			}
+		})
+	}
+}
