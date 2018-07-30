@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// Un mineur doit écouter pour les transactions des clients dans le réseau et pouvoir les accumuler dans une liste.
 func TestMiner03(t *testing.T) {
 	const MinerID = "8888"
 	const ClientID = "8889"
@@ -21,7 +22,7 @@ func TestMiner03(t *testing.T) {
 				Port: ClientID},
 		}
 		m := miner.NewMiner(MinerID, minerPeers).(*miner.Miner)
-		m.SetupRPC(MinerID)
+		m.SetupRPC()
 		// Create client
 		clientPeers := []*node.Peer{
 			&node.Peer{
@@ -31,27 +32,43 @@ func TestMiner03(t *testing.T) {
 		// Channel for communication
 		nodeChan := make(chan node.Message, 1)
 		c := client.NewClient(ClientID, clientPeers, nil, nodeChan).(*client.Client)
-		err := c.Peer()
+		err := c.SetupRPC()
 		if err != nil {
-			t.Fatalf("Error while peering: %v", err)
+			t.Errorf("Error while setting up RPC with client: %v", err)
+		}
+
+		err = c.Peer()
+		if err != nil {
+			t.Errorf("Error while peering: %v", err)
+		}
+
+		err = m.Peer()
+		if err != nil {
+			t.Errorf("Error while miner peering: %v", err)
 		}
 
 		err = c.HandleUiMessage(node.Message{
 			Peer:    ClientID,
 			Content: TestContent,
-			Time:    time.Now(),
+			Time:    time.Now().Format(time.RFC3339Nano),
 		})
 		if err != nil {
-			t.Fatalf("Error while sending message: %v", err)
+			t.Errorf("Error while sending message: %v", err)
 		}
 
 		if len(m.IncomingMsgChan) != 1 {
-			t.Fatalf("Message queue of miner should be 1")
+			t.Errorf("Message queue of miner should be 1")
 		}
 
 		msg := <-m.IncomingMsgChan
-		if msg.Content != TestContent || msg.Time.After(time.Now()) {
-			t.Fatalf("Miner received wrong message")
+
+		timestamp, err := time.Parse(time.RFC3339Nano, msg.Time)
+		if err != nil {
+			t.Errorf("Error while parsing time: %v", err)
+		}
+
+		if msg.Content != TestContent || timestamp.After(time.Now()) {
+			t.Errorf("Miner received wrong message")
 		}
 	})
 }

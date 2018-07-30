@@ -45,10 +45,10 @@ func TestClient02_parse(t *testing.T) {
 
 
 		for i := 0; i < node.BlockSize; i++{
-			block1.Messages[i] = node.Message{"1","test-1",time.Now()}
+			block1.Messages[i] = node.Message{"1","test-1",time.Now().Format(time.RFC3339Nano)}
 		}
-		hashedHeader1, _ := m.FindingNounce(&block1)
-		block1.Header.Hash = hashedHeader1
+
+
 		log.Printf("%v", block1)
 		go c.ReceiveBlock(block1)
 
@@ -65,10 +65,8 @@ func TestClient02_parse(t *testing.T) {
 
 
 		for i := 0; i < node.BlockSize; i++{
-			block2.Messages[i] = node.Message{"2","test-2",time.Now()}
+			block2.Messages[i] = node.Message{"2","test-2",time.Now().Format(time.RFC3339Nano)}
 		}
-		hashedHeader2, _ := m.FindingNounce(&block2)
-		block2.Header.Hash = hashedHeader2
 
 		go c.ReceiveBlock(block2)
 		for i := 0; i < node.BlockSize; i++{

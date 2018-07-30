@@ -35,14 +35,13 @@ func (n *NodeRPC) DeliverMessage(args *MessageRPC, reply *int) error {
 	return nil
 }
 
-func (n *NodeRPC) DeliverBlock(args *BlocksRPC, reply *int) error {
+func (n *NodeRPC) DeliverBlock(args *BlockRPC, reply *int) error {
 	// Upon reception of block from a miner
 	// To implement
 	// MINEUR-09
 	// MINEUR-11
-	n.Node.ReceiveBlock(args.Blocks[len(args.Blocks)-1])
+	return n.Node.ReceiveBlock(args.Block)
 	// If block is valid, halt current work to find block and start a new one including this new one
-	return nil
 }
 
 func (n *NodeRPC) GetBlocks(args *GetBlocksRPC, reply *BlocksRPC) error {
