@@ -204,7 +204,8 @@ func (c *Client) BroadcastBlock(b node.Block) error {
 	defer log.Println("Leaving BroadcastBlock()")
 
 	if len(c.Peers) == 0 {
-		return fmt.Errorf("No peers are defined")
+		log.Println("No peers are defined. Exiting.")
+		return nil
 	}
 
 	for _, peer := range c.Peers {
@@ -228,7 +229,7 @@ func (c *Client) ReceiveBlock(block node.Block) error {
 	log.Println("Client::Entering ReceiveBlock()")
 	defer log.Println("Client::Leaving ReceiveBlock()")
 
-	log.Printf("Block Header: %v, Block Message: %v", block.Header, block.Messages)
+	log.Printf("Block header hash: %v, Block header nounce: %v, Block header date: %v", block.Header.Hash, block.Header.Nounce, block.Header.Date)
 	// Do we already have this block in the chain?
 	for _, b := range c.blocks {
 		if reflect.DeepEqual(b, block) {
@@ -264,7 +265,7 @@ func (c *Client) ReceiveBlock(block node.Block) error {
 		if strings.Count(firstCharacters, "0") == node.MiningDifficulty && hash == block.Header.Hash {
 			log.Println("Received block's hash is valid!")
 		} else {
-			log.Printf("Received block's hash is not valid! Discarding block (%v != %v)", header.Hash, hash)
+			log.Printf("Received block's hash is not valid! Discarding block (%v != %v)", block.Header.Hash, hash)
 			return nil
 		}
 

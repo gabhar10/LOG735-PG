@@ -15,9 +15,9 @@ import (
 )
 
 type Miner struct {
-	ID                string // i.e. Run-time port associated to container
-	blocks            []node.Block
-	miningBlock       node.Block        // MINEUR-07
+	ID     string // i.e. Run-time port associated to container
+	blocks []node.Block
+	//miningBlock       *node.Block       // MINEUR-07
 	Peers             []*node.Peer      // Slice of peers
 	rpcHandler        *brpc.NodeRPC     // Handler for RPC requests
 	IncomingMsgChan   chan node.Message // Channel for incoming messages from other clients
@@ -34,7 +34,7 @@ func NewMiner(port string, peers []*node.Peer) node.Node {
 	m := &Miner{
 		port,
 		[]node.Block{},
-		node.Block{},
+		//nil,
 		peers,
 		new(brpc.NodeRPC),
 		make(chan node.Message, node.MessagesChannelSize),
@@ -52,12 +52,19 @@ func (m *Miner) Start() {
 	defer log.Println("Leaving Start()")
 
 	go func() {
-		m.miningBlock = m.mining()
-		m.blocks = append(m.blocks, m.miningBlock)
+		block := m.mining()
+		//m.miningBlock = &block
+
 		//MINEUR-06
-		m.BroadcastBlock(m.miningBlock)
-		m.miningBlock = node.Block{}
-		m.clearProcessedMessages(&m.miningBlock)
+
+		m.blocks = append(m.blocks, block)
+
+		m.BroadcastBlock(block)
+		m.mutex.Lock()
+		log.Println("Locking mutex")
+		m.clearProcessedMessages(&block)
+		m.mutex.Unlock()
+		log.Println("Unlocking mutex")
 	}()
 }
 
@@ -113,7 +120,8 @@ func (m *Miner) BroadcastBlock(b node.Block) error {
 	defer log.Println("Leaving BroadcastBlock()")
 
 	if len(m.Peers) == 0 {
-		return fmt.Errorf("No peers are defined")
+		log.Println("No peers are defined. Exiting.")
+		return nil
 	}
 
 	for _, peer := range m.Peers {
@@ -208,8 +216,12 @@ func (m *Miner) ReceiveMessage(content string, temps time.Time, peer string, mes
 		}
 	}
 	log.Printf("Appending message \"%s\" from peer \"%s\" in waiting list", msg.Content, msg.Peer)
-
+	log.Println("Locking mutex")
+	m.mutex.Lock()
 	m.waitingList = append(m.waitingList, msg)
+	m.mutex.Unlock()
+	log.Println("Unlocking mutex")
+
 	m.Broadcast(msg)
 	m.IncomingMsgChan <- msg
 }
@@ -270,14 +282,7 @@ func (m *Miner) ReceiveBlock(block node.Block) error {
 	//on enleve les messages du bloc valide qui sont dans le bloc quon etait en train de miner
 
 	m.mutex.Lock()
-	for _, rcvMsg := range block.Messages {
-		for i := 0; i < len(m.waitingList); i++ {
-			if reflect.DeepEqual(rcvMsg, m.waitingList[i]) {
-				log.Printf("Message \"%s\" from peer \"%s\" is in waiting list. Removing it.", rcvMsg.Content, rcvMsg.Peer)
-				m.waitingList = append(m.waitingList[:i], m.waitingList[i+1:]...)
-			}
-		}
-	}
+	m.clearProcessedMessages(&block)
 	m.mutex.Unlock()
 	err := m.BroadcastBlock(block)
 	if err != nil {
@@ -297,24 +302,17 @@ func (m *Miner) mining() node.Block {
 	case <-m.quit:
 		return node.Block{}
 	default:
-		m.miningBlock = m.CreateBlock()
-		hashedHeader, _ := m.findingNounce(&m.miningBlock)
-		log.Println("Nounce : ", m.miningBlock.Header.Nounce)
-		m.miningBlock.Header.Hash = hashedHeader
-
-		m.mutex.Lock()
-		//supprimer les messages de la waitingList
-		for _, message := range m.miningBlock.Messages {
-			for j, unprocMessage := range m.waitingList {
-				if reflect.DeepEqual(unprocMessage, message) {
-					m.waitingList = append(m.waitingList[:j], m.waitingList[j+1:]...)
-					break
-				}
-			}
+		block := m.CreateBlock()
+		hashedHeader, err := m.findingNounce(&block)
+		if err != nil {
+			log.Printf("Error while finding nounce: %v", err)
+			return node.Block{}
 		}
-		m.mutex.Unlock()
+		log.Println("Nounce : ", block.Header.Nounce)
+		block.Header.Hash = hashedHeader
 
-		return m.miningBlock
+		log.Printf("block: %v", block)
+		return block
 	}
 }
 
@@ -407,6 +405,7 @@ func (m *Miner) clearProcessedMessages(block *node.Block) {
 	for _, message := range block.Messages {
 		for j, unprocMessage := range m.waitingList {
 			if reflect.DeepEqual(unprocMessage, message) {
+				log.Printf("Message \"%s\" from peer \"%s\" is in waiting list. Removing it.", message.Content, message.Peer)
 				m.waitingList = append(m.waitingList[:j], m.waitingList[j+1:]...)
 				break
 			}

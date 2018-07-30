@@ -18,7 +18,7 @@ type Block struct {
 }
 
 type Message struct {
-	Peer 	string
+	Peer    string
 	Content string
 	Time    time.Time
 }
