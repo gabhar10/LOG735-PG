@@ -159,7 +159,7 @@ func (m *Miner) Broadcast(message node.Message) error {
 			return fmt.Errorf("RPC connection handler of peer %s is nil", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
 		}
 		args := brpc.MessageRPC{
-			ConnectionRPC: brpc.ConnectionRPC{PeerID: m.ID},
+			ConnectionRPC: brpc.ConnectionRPC{PeerID: message.Peer},
 			Message:       message.Content,
 			Time:          message.Time}
 		var reply *int

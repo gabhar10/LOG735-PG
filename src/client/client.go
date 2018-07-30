@@ -162,10 +162,9 @@ func (c *Client) ReceiveMessage(content string, temps time.Time, peer string, me
 
 func (c *Client) HandleUiMessage(message node.Message) error {
 
-	var msg node.Message
 	for _, conn := range c.Peers {
 		var reply int
-		message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, msg.Content, time.Now(), brpc.MessageType}
+		message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, message.Content, message.Time, brpc.MessageType}
 		err := conn.Conn.Call("NodeRPC.DeliverMessage", message, &reply)
 		if err != nil {
 			return err
