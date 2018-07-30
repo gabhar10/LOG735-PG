@@ -87,7 +87,6 @@ func (c *Client) GetBlocks() []node.Block {
 // Connect node to Anchor Miner
 func (c *Client) Connect(anchorPort string) error {
 
-
 	anchorPeer := &node.Peer{
 		Host: fmt.Sprintf("node-%s", anchorPort),
 		Port: anchorPort}
@@ -190,9 +189,27 @@ func (c *Client) StartMessageLoop() error {
 				c.uiChannel <- node.Message{c.ID, "Bonjour", time.Now()}
 			}
 		}
-
 	}
 
+	return nil
+}
+
+func (c *Client) GetAnchorBlock() ([]node.Block, error){
+	if len(c.Peers) > 0 {
+		if c.Peers[0].Conn != nil{
+			var reply brpc.BlocksRPC
+			c.Peers[0].Conn.Call("NodeRPC.GetBlocks", nil ,&reply)
+			return reply.Blocks, nil
+		} else {
+			return nil, fmt.Errorf("no open connection with peer")
+		}
+	} else {
+		return nil, fmt.Errorf("there are no peer available to give a block")
+	}
+}
+
+
+func (c *Client) ParseChain([]node.Block) (error){
 	return nil
 }
 

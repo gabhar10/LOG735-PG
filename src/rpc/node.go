@@ -48,6 +48,7 @@ func (n *NodeRPC) DeliverBlock(args *BlocksRPC, reply *int) error {
 func (n *NodeRPC) GetBlocks(args *GetBlocksRPC, reply *BlocksRPC) error {
 	// CLIENT-10
 	// To implement
+	reply.Blocks = n.Node.GetBlocks()
 	return nil
 }
 

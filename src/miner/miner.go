@@ -296,14 +296,6 @@ func (m *Miner) CloseConnection(disconnectingPeer string) error {
 			m.Peers[i] = m.Peers[len(m.Peers)-1]
 			m.Peers = m.Peers[:len(m.Peers)-1]
 			break
-		} else {
-			disconnectionNotice := brpc.MessageRPC{
-				brpc.ConnectionRPC{m.ID},
-				disconnectingPeer,
-				time.Now(),
-				brpc.DisconnectionType}
-			var reply int
-			m.Peers[i].Conn.Call("NodeRPC.DeliverMessage", disconnectionNotice, &reply)
 		}
 	}
 	return nil
