@@ -1,15 +1,11 @@
 package node
 
-import (
-	"time"
-)
-
 type Node interface {
-	SetupRPC(string) error
+	SetupRPC() error
 	Peer() error
 	GetBlocks() []Block
-	ReceiveMessage(string, time.Time, string, int)
-	ReceiveBlock(Block)
+	ReceiveMessage(string, string, string, int) error
+	ReceiveBlock(Block) error
 	Start()
 	Connect(string) error
 	Disconnect() error

@@ -40,9 +40,8 @@ func (n *NodeRPC) DeliverBlock(args *BlockRPC, reply *int) error {
 	// To implement
 	// MINEUR-09
 	// MINEUR-11
-	n.Node.ReceiveBlock(args.Block)
+	return n.Node.ReceiveBlock(args.Block)
 	// If block is valid, halt current work to find block and start a new one including this new one
-	return nil
 }
 
 func (n *NodeRPC) GetBlocks(args *GetBlocksRPC, reply *BlocksRPC) error {

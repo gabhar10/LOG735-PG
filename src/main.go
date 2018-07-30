@@ -43,8 +43,7 @@ func main() {
 	}
 
 	// Start RPC server
-	nodePort := os.Getenv("PORT")
-	err := n.SetupRPC(nodePort)
+	err := n.SetupRPC()
 	if err != nil {
 		log.Fatal("RPC setup error:", err)
 	}

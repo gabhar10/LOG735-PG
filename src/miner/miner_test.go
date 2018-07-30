@@ -54,10 +54,10 @@ func TestMiner_findingNounce(t *testing.T) {
 						messages[i] = node.Message{
 							Peer:    "",
 							Content: "Salut!",
-							Time:    time.Date(2018, 7, 15, 8, 0, 0, 0, time.UTC),
+							Time:    time.Date(2018, 7, 15, 8, 0, 0, 0, time.UTC).String(),
 						}
 					}
-					return &node.Block{Header: node.Header{PreviousBlock: [sha256.Size]byte{}, Date: time.Now()}, Messages: messages}
+					return &node.Block{Header: node.Header{PreviousBlock: [sha256.Size]byte{}, Date: time.Now().Format(time.RFC3339Nano)}, Messages: messages}
 				}(),
 			},
 			want:    [sha256.Size]byte{},
@@ -138,7 +138,7 @@ func TestMiner_CreateBlock(t *testing.T) {
 					messages[i] = node.Message{
 						Peer:    "",
 						Content: "Salut!",
-						Time:    time.Date(2018, 7, 15, 8, 0, 0, 0, time.UTC),
+						Time:    time.Date(2018, 7, 15, 8, 0, 0, 0, time.UTC).String(),
 					}
 				}
 				return node.Block{Messages: messages}
@@ -150,7 +150,7 @@ func TestMiner_CreateBlock(t *testing.T) {
 			tt.fields.IncomingMsgChan <- node.Message{
 				Peer:    "",
 				Content: "Salut!",
-				Time:    time.Date(2018, 7, 15, 8, 0, 0, 0, time.UTC),
+				Time:    time.Date(2018, 7, 15, 8, 0, 0, 0, time.UTC).String(),
 			}
 		}
 		t.Run(tt.name, func(t *testing.T) {
@@ -303,7 +303,7 @@ func TestMiner_SetupRPC(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.preFunc()
 			m := NewMiner(tt.args.port, []*node.Peer{})
-			if err := m.SetupRPC(tt.args.port); (err != nil) != tt.wantErr {
+			if err := m.SetupRPC(); (err != nil) != tt.wantErr {
 				t.Errorf("Miner.SetupRPC() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			tt.postFunc()
@@ -338,7 +338,7 @@ func TestMiner_Peer(t *testing.T) {
 					if rpc.Register(m.rpcHandler) != nil {
 						return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "8888"}}
 					}
-					m.SetupRPC("9002")
+					m.SetupRPC()
 					return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "9002"}}
 				}(),
 				mutex: new(sync.Mutex),
@@ -396,7 +396,7 @@ func TestMiner_Broadcast(t *testing.T) {
 					if rpc.Register(m.rpcHandler) != nil {
 						return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "8888"}}
 					}
-					m.SetupRPC("9002")
+					m.SetupRPC()
 					return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "9002"}}
 				}(),
 				mutex: new(sync.Mutex),
@@ -405,7 +405,7 @@ func TestMiner_Broadcast(t *testing.T) {
 				message: node.Message{
 					Peer:    "8001",
 					Content: "This is a test",
-					Time:    time.Now()},
+					Time:    time.Now().Format(time.RFC3339Nano)},
 			},
 			wantErr: false,
 		},
@@ -437,14 +437,15 @@ func TestMiner_ReceiveMessage(t *testing.T) {
 	}
 	type args struct {
 		content     string
-		temps       time.Time
+		temps       string
 		peer        string
 		messageType int
 	}
 	tests := []struct {
-		name   string
-		fields fields
-		args   []args
+		name    string
+		fields  fields
+		args    []args
+		wantErr bool
 	}{
 		{
 			name: fmt.Sprintf("Send %v messages to miner", node.MessagesChannelSize/2),
@@ -455,22 +456,30 @@ func TestMiner_ReceiveMessage(t *testing.T) {
 			args: func() []args {
 				msgs := []args{}
 				for i := 0; i < node.MessagesChannelSize/2; i++ {
-					msgs = append(msgs, args{"Hello", time.Now(), "", brpc.MessageType})
+					msgs = append(msgs, args{"Hello", time.Now().Format(time.RFC3339Nano), "", brpc.MessageType})
 				}
 				return msgs
 			}(),
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := NewMiner(tt.fields.ID, tt.fields.peers).(*Miner)
 			for _, a := range tt.args {
-				m.ReceiveMessage(a.content, a.temps, a.peer, a.messageType)
+				if err := m.ReceiveMessage(a.content, a.temps, a.peer, a.messageType); (err != nil) != tt.wantErr {
+					t.Errorf("Miner.ReceiveMessage() error = %v, wantErr %v", err, tt.wantErr)
+				}
 			}
 
 			for i := 0; i < node.MessagesChannelSize/2; i++ {
 				mes := <-m.IncomingMsgChan
-				if mes.Content != tt.args[i].content || mes.Time.After(time.Now()) {
+
+				timestamp, err := time.Parse(time.RFC3339Nano, mes.Time)
+				if err != nil {
+					t.Errorf("Error while parsing time: %v", err)
+				}
+				if mes.Content != tt.args[i].content || timestamp.After(time.Now()) {
 					t.Errorf("Miner.ReceiveMessage() did not return expected values: ")
 				}
 			}
@@ -479,45 +488,9 @@ func TestMiner_ReceiveMessage(t *testing.T) {
 }
 
 func TestMiner_ReceiveBlock(t *testing.T) {
-	var m *Miner
-	func() {
-		driver := node.Peer{Host: "127.0.0.1", Port: "9001"}
-		m = NewMiner("9002", []*node.Peer{&driver}).(*Miner)
-
-		bloc := node.Block{}
-		messages := [node.BlockSize]node.Message{}
-		for i := 0; i < node.BlockSize; i++ {
-			messages[i] = node.Message{Content: "Salut!"}
-		}
-		bloc.Messages = messages
-		hashedHeader, _ := m.findingNounce(&bloc)
-		bloc.Header.Hash = hashedHeader
-		tempBlock := append(m.blocks, bloc)
-		m.blocks = tempBlock
-
-		bloc = node.Block{}
-		messages = [node.BlockSize]node.Message{}
-		for i := 0; i < node.BlockSize; i++ {
-			messages[i] = node.Message{Content: "Bonjour!"}
-		}
-		bloc.Messages = messages
-		bloc.Header.PreviousBlock = hashedHeader
-		hashedHeader, _ = m.findingNounce(&bloc)
-		bloc.Header.Hash = hashedHeader
-		tempBlock2 := append(m.blocks, bloc)
-		m.blocks = tempBlock2
-
-		m.Start()
-		for i := 0; i < node.BlockSize; i++ {
-			m.IncomingMsgChan <- node.Message{Content: "En train de miner!"}
-		}
-		//time.Sleep(100 * time.Millisecond)
-
-	}()
 	type fields struct {
 		ID                string
 		blocks            []node.Block
-		miningBlock       node.Block
 		peers             []*node.Peer
 		rpcHandler        *brpc.NodeRPC
 		IncomingMsgChan   chan node.Message
@@ -529,41 +502,44 @@ func TestMiner_ReceiveBlock(t *testing.T) {
 		block node.Block
 	}
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
 	}{
 		{
 			name: "Sunny day",
 			fields: fields{
-				ID:                m.ID,
-				blocks:            m.blocks,
-				miningBlock:       m.miningBlock,
-				peers:             m.Peers,
-				rpcHandler:        m.rpcHandler,
-				IncomingMsgChan:   m.IncomingMsgChan,
-				incomingBlockChan: m.incomingBlockChan,
-				quit:              m.quit,
-				mutex:             m.mutex,
+				ID:    "9002",
+				peers: []*node.Peer{},
 			},
 			args: args{
-				block: m.blocks[1],
+				block: func() node.Block {
+					m := NewMiner("8888", []*node.Peer{}).(*Miner)
+					messages := [node.BlockSize]node.Message{}
+					for i := 0; i < node.BlockSize; i++ {
+						messages[i] = node.Message{
+							Peer:    "9000",
+							Content: "Salut!",
+							Time:    time.Now().Format(time.RFC3339Nano),
+						}
+					}
+
+					for _, msg := range messages {
+						m.IncomingMsgChan <- msg
+					}
+					return m.mining()
+				}(),
 			},
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := Miner{
-				ID:                tt.fields.ID,
-				blocks:            tt.fields.blocks,
-				Peers:             tt.fields.peers,
-				rpcHandler:        tt.fields.rpcHandler,
-				IncomingMsgChan:   tt.fields.IncomingMsgChan,
-				incomingBlockChan: tt.fields.incomingBlockChan,
-				quit:              tt.fields.quit,
-				mutex:             tt.fields.mutex,
+			m := NewMiner(tt.fields.ID, tt.fields.peers)
+			if err := m.ReceiveBlock(tt.args.block); (err != nil) != tt.wantErr {
+				t.Errorf("Miner.ReceiveBlock() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			m.ReceiveBlock(tt.args.block)
 		})
 	}
 }
@@ -640,16 +616,55 @@ func TestMiner_mining(t *testing.T) {
 				for i := 0; i < node.BlockSize; i++ {
 					m.IncomingMsgChan <- node.Message{
 						Content: "Salut!",
-						Time:    time.Date(2018, 7, 15, 8, 0, 0, 0, time.UTC)}
+						Time:    time.Date(2018, 7, 15, 8, 0, 0, 0, time.UTC).String()}
 				}
 			}()
 
 			got := m.mining()
-			for _, v := range tt.want.Messages {
-				for _, w := range got.Messages {
-					if v.Content != w.Content {
-						t.Errorf("Received messages (%v) != expected messages (%v)", v, w)
+
+			// To distinguish block returned from legit mining and quit channel message passing
+			if !strings.Contains(strings.ToLower(tt.name), "quit") {
+				if got.Header.Hash == ([sha256.Size]byte{}) {
+					t.Errorf("Hash of header is empty")
+				}
+
+				timestamp, err := time.Parse(time.RFC3339Nano, got.Header.Date)
+				if err != nil {
+					t.Errorf("Error while parsing time: %v", err)
+				}
+
+				if timestamp.After(time.Now()) {
+					t.Errorf("Returned header's time is in the future")
+				}
+
+				// We supose it's impossible that the nounce is 0
+				if got.Header.Nounce == 0 {
+					t.Errorf("Nounce of header is 0")
+				}
+
+				if got.Header.PreviousBlock != ([sha256.Size]byte{}) {
+					var found bool
+					for _, m := range m.blocks {
+						if m.Header.Hash == got.Header.PreviousBlock {
+							found = true
+							break
+						}
 					}
+					if !found {
+						t.Errorf("Header's previous block is not a block in our chain")
+					}
+				}
+
+				for _, v := range tt.want.Messages {
+					for _, w := range got.Messages {
+						if v.Content != w.Content {
+							t.Errorf("Received messages (%v) != expected messages (%v)", v, w)
+						}
+					}
+				}
+			} else {
+				if got != (node.Block{}) {
+					t.Errorf("Invoking quit should have returned empty block")
 				}
 			}
 		})
@@ -671,45 +686,59 @@ func TestMiner_BroadcastBlock(t *testing.T) {
 	type args struct {
 		in0 node.Block
 	}
+
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
+		name              string
+		fields            fields
+		args              args
+		expectedChainSize int
 	}{
 		{
-			name: "Sunny day",
+			name: "Sending invalid block",
 			fields: fields{
-				ID: "8000",
-				peers: func() []*node.Peer {
-					driver := node.Peer{Host: "127.0.0.1", Port: "9001"}
-					m := NewMiner("9002", []*node.Peer{&driver}).(*Miner)
-					// Given an RPC handler already exist from previous test, use it
-					if rpc.Register(m.rpcHandler) != nil {
-						return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "8888"}}
-					}
-					m.SetupRPC("9002")
-					return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "9002"}}
-				}(),
+				ID:    "9001",
+				peers: []*node.Peer{},
 				mutex: new(sync.Mutex),
 			},
 			args: args{
-				in0: node.Block{
-					Header:   node.Header{},
-					Messages: [node.BlockSize]node.Message{},
-				},
+				in0: func() node.Block {
+					m := NewMiner("whatever", []*node.Peer{}).(*Miner)
+					messages := [node.BlockSize]node.Message{}
+					for i := 0; i < node.BlockSize; i++ {
+						messages[i] = node.Message{
+							Peer:    "9001",
+							Content: "Salut!",
+							Time:    time.Now().Format(time.RFC3339Nano),
+						}
+					}
+
+					for _, msg := range messages {
+						m.IncomingMsgChan <- msg
+					}
+					return m.mining()
+				}(),
 			},
+			expectedChainSize: 0,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := NewMiner(tt.fields.ID, tt.fields.peers).(*Miner)
-			err := m.Peer()
+			err := m.SetupRPC()
 			if err != nil {
-				t.Fatalf("Error while peering: %v", err)
+				t.Errorf("Error while setting up RPC: %v", err)
 			}
-			if err := m.BroadcastBlock(tt.args.in0); (err != nil) != tt.wantErr {
-				t.Errorf("Miner.BroadcastBlock() error = %v, wantErr %v", err, tt.wantErr)
+
+			err = m.Peer()
+			if err != nil {
+				t.Errorf("Error while peering: %v", err)
+			}
+
+			if err := m.BroadcastBlock(tt.args.in0); err != nil {
+				t.Errorf("Miner.BroadcastBlock() error = %v", err)
+			}
+			if len(m.blocks) != tt.expectedChainSize {
+				t.Fatalf("Block was not accepted!")
 			}
 		})
 	}
@@ -733,7 +762,7 @@ func TestMiner_clearProcessedMessages(t *testing.T) {
 
 	commonMessages := []node.Message{}
 	for i := 0; i < 5; i++ {
-		commonMessages = append(commonMessages, node.Message{Peer: "123", Content: "Common message", Time: time.Now()})
+		commonMessages = append(commonMessages, node.Message{Peer: "123", Content: "Common message", Time: time.Now().Format(time.RFC3339Nano)})
 	}
 
 	tests := []struct {
@@ -760,7 +789,7 @@ func TestMiner_clearProcessedMessages(t *testing.T) {
 						m.IncomingMsgChan <- node.Message{
 							Peer:    "123",
 							Content: "This is a test",
-							Time:    time.Now()}
+							Time:    time.Now().Format(time.RFC3339Nano)}
 					}
 					b := m.mining()
 					return &b
