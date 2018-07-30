@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// Un mineur doit écouter pour les transactions des clients dans le réseau et pouvoir les accumuler dans une liste.
+// MINEUR-03: Un mineur doit écouter pour les transactions des clients dans le réseau et pouvoir les accumuler dans une liste.
 func TestMiner03(t *testing.T) {
 	const MinerID = "8888"
 	const ClientID = "8889"
@@ -22,7 +22,10 @@ func TestMiner03(t *testing.T) {
 				Port: ClientID},
 		}
 		m := miner.NewMiner(MinerID, minerPeers).(*miner.Miner)
-		m.SetupRPC()
+		err := m.SetupRPC()
+		if err != nil {
+			t.Errorf("Error while trying to setup RPC: %v", err)
+		}
 		// Create client
 		clientPeers := []*node.Peer{
 			&node.Peer{
@@ -32,7 +35,7 @@ func TestMiner03(t *testing.T) {
 		// Channel for communication
 		nodeChan := make(chan node.Message, 1)
 		c := client.NewClient(ClientID, clientPeers, nil, nodeChan).(*client.Client)
-		err := c.SetupRPC()
+		err = c.SetupRPC()
 		if err != nil {
 			t.Errorf("Error while setting up RPC with client: %v", err)
 		}

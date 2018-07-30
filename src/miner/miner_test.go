@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"net"
-	"net/rpc"
 	"reflect"
 	"strings"
 	"sync"
@@ -334,11 +333,10 @@ func TestMiner_Peer(t *testing.T) {
 				peers: func() []*node.Peer {
 					driver := node.Peer{Host: "127.0.0.1", Port: "9001"}
 					m := NewMiner("9002", []*node.Peer{&driver}).(*Miner)
-					// Given an RPC handler already exist from previous test, use it
-					if rpc.Register(m.rpcHandler) != nil {
-						return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "8888"}}
+					err := m.SetupRPC()
+					if err != nil {
+						t.Errorf("Error while trying to setup RPC: %v", err)
 					}
-					m.SetupRPC()
 					return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "9002"}}
 				}(),
 				mutex: new(sync.Mutex),
@@ -348,7 +346,7 @@ func TestMiner_Peer(t *testing.T) {
 		{
 			name: "Can't connect",
 			fields: fields{
-				ID:    "9001",
+				ID:    "9004",
 				peers: []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "9003"}},
 				mutex: new(sync.Mutex),
 			},
@@ -358,6 +356,10 @@ func TestMiner_Peer(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := NewMiner(tt.fields.ID, tt.fields.peers)
+			err := m.SetupRPC()
+			if err != nil {
+				t.Errorf("Error while setting up RPC: %v", err)
+			}
 			if err := m.Peer(); (err != nil) != tt.wantErr {
 				t.Errorf("Miner.Peer() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -390,14 +392,13 @@ func TestMiner_Broadcast(t *testing.T) {
 			fields: fields{
 				ID: "8000",
 				peers: func() []*node.Peer {
-					driver := node.Peer{Host: "127.0.0.1", Port: "9001"}
-					m := NewMiner("9002", []*node.Peer{&driver}).(*Miner)
-					// Given an RPC handler already exist from previous test, use it
-					if rpc.Register(m.rpcHandler) != nil {
-						return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "8888"}}
+					driver := node.Peer{Host: "127.0.0.1", Port: "9010"}
+					m := NewMiner("9003", []*node.Peer{&driver}).(*Miner)
+					err := m.SetupRPC()
+					if err != nil {
+						t.Errorf("Error while trying to setup RPC: %v", err)
 					}
-					m.SetupRPC()
-					return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "9002"}}
+					return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "9003"}}
 				}(),
 				mutex: new(sync.Mutex),
 			},
@@ -415,7 +416,7 @@ func TestMiner_Broadcast(t *testing.T) {
 			m := NewMiner(tt.fields.ID, tt.fields.peers).(*Miner)
 			err := m.Peer()
 			if err != nil {
-				t.Fatalf("Error while peering: %v", err)
+				t.Errorf("Error while peering: %v", err)
 			}
 			if err := m.Broadcast(tt.args.message); (err != nil) != tt.wantErr {
 				t.Errorf("Miner.Broadcast() error = %v, wantErr %v", err, tt.wantErr)
@@ -510,12 +511,12 @@ func TestMiner_ReceiveBlock(t *testing.T) {
 		{
 			name: "Sunny day",
 			fields: fields{
-				ID:    "9002",
+				ID:    "9005",
 				peers: []*node.Peer{},
 			},
 			args: args{
 				block: func() node.Block {
-					m := NewMiner("8888", []*node.Peer{}).(*Miner)
+					m := NewMiner("8889", []*node.Peer{}).(*Miner)
 					messages := [node.BlockSize]node.Message{}
 					for i := 0; i < node.BlockSize; i++ {
 						messages[i] = node.Message{
@@ -528,7 +529,11 @@ func TestMiner_ReceiveBlock(t *testing.T) {
 					for _, msg := range messages {
 						m.IncomingMsgChan <- msg
 					}
-					return m.mining()
+					b, err := m.mining()
+					if err != nil {
+						t.Errorf("Error while mining: %v", err)
+					}
+					return b
 				}(),
 			},
 			wantErr: false,
@@ -620,7 +625,10 @@ func TestMiner_mining(t *testing.T) {
 				}
 			}()
 
-			got := m.mining()
+			got, err := m.mining()
+			if err != nil {
+				t.Errorf("Error while mining: %v", err)
+			}
 
 			// To distinguish block returned from legit mining and quit channel message passing
 			if !strings.Contains(strings.ToLower(tt.name), "quit") {
@@ -696,7 +704,7 @@ func TestMiner_BroadcastBlock(t *testing.T) {
 		{
 			name: "Sending invalid block",
 			fields: fields{
-				ID:    "9001",
+				ID:    "9011",
 				peers: []*node.Peer{},
 				mutex: new(sync.Mutex),
 			},
@@ -706,7 +714,7 @@ func TestMiner_BroadcastBlock(t *testing.T) {
 					messages := [node.BlockSize]node.Message{}
 					for i := 0; i < node.BlockSize; i++ {
 						messages[i] = node.Message{
-							Peer:    "9001",
+							Peer:    "9011",
 							Content: "Salut!",
 							Time:    time.Now().Format(time.RFC3339Nano),
 						}
@@ -715,7 +723,11 @@ func TestMiner_BroadcastBlock(t *testing.T) {
 					for _, msg := range messages {
 						m.IncomingMsgChan <- msg
 					}
-					return m.mining()
+					b, err := m.mining()
+					if err != nil {
+						t.Errorf("Error while mining: %v", err)
+					}
+					return b
 				}(),
 			},
 			expectedChainSize: 0,
@@ -738,7 +750,7 @@ func TestMiner_BroadcastBlock(t *testing.T) {
 				t.Errorf("Miner.BroadcastBlock() error = %v", err)
 			}
 			if len(m.blocks) != tt.expectedChainSize {
-				t.Fatalf("Block was not accepted!")
+				t.Errorf("Block was not accepted!")
 			}
 		})
 	}
@@ -791,7 +803,10 @@ func TestMiner_clearProcessedMessages(t *testing.T) {
 							Content: "This is a test",
 							Time:    time.Now().Format(time.RFC3339Nano)}
 					}
-					b := m.mining()
+					b, err := m.mining()
+					if err != nil {
+						t.Errorf("Error while mining: %v", err)
+					}
 					return &b
 				}(),
 			},
@@ -812,7 +827,7 @@ func TestMiner_clearProcessedMessages(t *testing.T) {
 			}
 			m.clearProcessedMessages(tt.args.block)
 			if len(m.waitingList) > 0 {
-				t.Fatalf("Waiting list should be empty")
+				t.Errorf("Waiting list should be empty")
 			}
 		})
 	}

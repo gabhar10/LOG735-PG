@@ -52,7 +52,11 @@ func (m *Miner) Start() {
 	defer log.Printf("Miner-%s::Leaving Start()", m.ID)
 
 	go func() {
-		block := m.mining()
+		block, err := m.mining()
+		if err != nil {
+			log.Printf("Error while mining: %v", err)
+			return
+		}
 		//m.miningBlock = &block
 
 		//MINEUR-06
@@ -86,6 +90,7 @@ func (m *Miner) SetupRPC() error {
 
 	listener, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%s", m.ID))
 	if err != nil {
+		log.Printf("Error while acquiring listener: %v", err)
 		return err
 	}
 	go s.Accept(listener)
@@ -99,6 +104,7 @@ func (m *Miner) Peer() error {
 	for _, peer := range m.Peers {
 		client, err := brpc.ConnectTo(*peer)
 		if err != nil {
+			log.Printf("Error while getting RPC: %v", err)
 			return err
 		}
 		args := &brpc.ConnectionRPC{PeerID: peer.Port}
@@ -106,6 +112,7 @@ func (m *Miner) Peer() error {
 
 		err = client.Call("NodeRPC.Peer", args, &reply)
 		if err != nil {
+			log.Printf("Error while peering: %v", err)
 			return err
 		}
 		peer.Conn = client
@@ -135,6 +142,7 @@ func (m *Miner) BroadcastBlock(b node.Block) error {
 		var reply *int
 		err := peer.Conn.Call("NodeRPC.DeliverBlock", &args, &reply)
 		if err != nil {
+			log.Printf("Error while delivering block: %v", err)
 			return err
 		}
 	}
@@ -161,6 +169,7 @@ func (m *Miner) Broadcast(message node.Message) error {
 
 	for _, peer := range m.Peers {
 		if peer.Conn == nil {
+			log.Printf("RPC connection handler of peer %s is nil", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
 			return fmt.Errorf("RPC connection handler of peer %s is nil", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
 		}
 		args := brpc.MessageRPC{
@@ -170,6 +179,7 @@ func (m *Miner) Broadcast(message node.Message) error {
 		var reply *int
 		err := peer.Conn.Call("NodeRPC.DeliverMessage", &args, &reply)
 		if err != nil {
+			log.Printf("Error while delivering message: %v", err)
 			return err
 		}
 	}
@@ -299,6 +309,7 @@ func (m *Miner) ReceiveBlock(block node.Block) error {
 	m.mutex.Unlock()
 	err := m.BroadcastBlock(block)
 	if err != nil {
+		log.Printf("Error while broadcasting block: %v", err)
 		return err
 	}
 
@@ -312,25 +323,25 @@ func (m *Miner) ReceiveBlock(block node.Block) error {
 	return nil
 }
 
-func (m *Miner) mining() node.Block {
+func (m *Miner) mining() (node.Block, error) {
 	log.Printf("Miner-%s::Entering mining()", m.ID)
 	defer log.Printf("Miner-%s::Leaving mining()", m.ID)
 
 	select {
 	case <-m.quit:
-		return node.Block{}
+		return node.Block{}, nil
 	default:
 		block := m.CreateBlock()
 		hashedHeader, err := m.findingNounce(&block)
 		if err != nil {
 			log.Printf("Error while finding nounce: %v", err)
-			return node.Block{}
+			return node.Block{}, fmt.Errorf("Error while finding nounce: %v", err)
 		}
 		log.Println("Nounce : ", block.Header.Nounce)
 		block.Header.Hash = hashedHeader
 
 		log.Printf("block: %v", block)
-		return block
+		return block, nil
 	}
 }
 
@@ -345,6 +356,7 @@ findingNounce:
 	for {
 		select {
 		case <-m.quit:
+			log.Println("Quitting!")
 			return [sha256.Size]byte{}, fmt.Errorf("Quit")
 		default:
 			block.Header.Nounce = nounce
@@ -389,9 +401,14 @@ func (m *Miner) CloseConnection(disconnectingPeer string) error {
 				brpc.DisconnectionType}
 			var reply int
 			if m.Peers[i].Conn == nil {
+				log.Printf("Miner does not have a connection with peer %d", i)
 				return fmt.Errorf("Miner does not have a connection with peer %d", i)
 			}
-			m.Peers[i].Conn.Call("NodeRPC.DeliverMessage", disconnectionNotice, &reply)
+			err := m.Peers[i].Conn.Call("NodeRPC.DeliverMessage", disconnectionNotice, &reply)
+			if err != nil {
+				log.Printf("Error while trying to deliver message to peer: %v", err)
+				return err
+			}
 		}
 	}
 	return nil
