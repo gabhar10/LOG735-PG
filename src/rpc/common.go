@@ -20,11 +20,11 @@ type (
 
 	MessageRPC struct {
 		ConnectionRPC
-		Message 		string
-		Time    		time.Time
-		MessageType 	int	// Indicates if message is chat message [0],
-							// Disconnection of a peer [1] or
-							// Connection of peer [2]
+		Message     string
+		Time        time.Time
+		MessageType int // Indicates if message is chat message [0],
+		// Disconnection of a peer [1] or
+		// Connection of peer [2]
 	}
 
 	BlocksRPC struct {
@@ -52,7 +52,7 @@ func ConnectTo(peer node.Peer) (*rpc.Client, error) {
 	for i := 0; i < maxTries; i++ {
 		time.Sleep(time.Second)
 		log.Printf("Dialing %s, try #%d\n", fmt.Sprintf("%s:%s", peer.Host, peer.Port), i+1)
-		c, err = rpc.DialHTTP("tcp", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
+		c, err = rpc.Dial("tcp", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
 		if err == nil {
 			break
 		}

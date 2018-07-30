@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"net/http"
 	"net/rpc"
 	"reflect"
 	"strings"
@@ -71,18 +70,18 @@ func (m *Miner) Connect(anchorPort string) error {
 
 // MINEUR-12
 
-func (m *Miner) SetupRPC(port string) error {
+func (m *Miner) SetupRPC() error {
 	log.Println("Entering SetupRPC()")
 	defer log.Println("Leaving SetupRPC()")
 
-	l, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%s", port))
+	s := rpc.NewServer()
+	s.Register(m.rpcHandler)
+
+	listener, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%s", m.ID))
 	if err != nil {
 		return err
 	}
-	rpc.Register(m.rpcHandler)
-	rpc.HandleHTTP()
-	log.Printf("Listening on TCP port %s\n", port)
-	go http.Serve(l, nil)
+	go s.Accept(listener)
 	return nil
 }
 
@@ -95,7 +94,7 @@ func (m *Miner) Peer() error {
 		if err != nil {
 			return err
 		}
-		args := &brpc.ConnectionRPC{PeerID: m.ID}
+		args := &brpc.ConnectionRPC{PeerID: peer.Port}
 		var reply brpc.BlocksRPC
 
 		err = client.Call("NodeRPC.Peer", args, &reply)
@@ -110,7 +109,6 @@ func (m *Miner) Peer() error {
 }
 
 func (m *Miner) BroadcastBlock(b node.Block) error {
-
 	log.Println("Entering BroadcastBlock()")
 	defer log.Println("Leaving BroadcastBlock()")
 
@@ -120,11 +118,11 @@ func (m *Miner) BroadcastBlock(b node.Block) error {
 
 	for _, peer := range m.Peers {
 		if peer.Conn == nil {
+			log.Println("No connection!")
 			return fmt.Errorf("RPC connection handler of peer %s is nil", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
-
 		}
 		args := brpc.BlockRPC{
-			ConnectionRPC: brpc.ConnectionRPC{PeerID: m.ID},
+			ConnectionRPC: brpc.ConnectionRPC{PeerID: peer.Port},
 			Block:         b}
 		var reply *int
 		err := peer.Conn.Call("NodeRPC.DeliverBlock", &args, &reply)
@@ -157,7 +155,7 @@ func (m *Miner) Broadcast(message node.Message) error {
 			return fmt.Errorf("RPC connection handler of peer %s is nil", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
 		}
 		args := brpc.MessageRPC{
-			ConnectionRPC: brpc.ConnectionRPC{PeerID: m.ID},
+			ConnectionRPC: brpc.ConnectionRPC{PeerID: peer.Port},
 			Message:       message.Content,
 			Time:          message.Time}
 		var reply *int
@@ -216,12 +214,17 @@ func (m *Miner) ReceiveMessage(content string, temps time.Time, peer string, mes
 	m.IncomingMsgChan <- msg
 }
 
-func (m *Miner) ReceiveBlock(block node.Block) {
-	log.Println("Entering ReceiveBlock()")
-	defer log.Println("Leaving ReceiveBlock()")
+func (m *Miner) ReceiveBlock(block node.Block) error {
+	log.Println("Miner::Entering ReceiveBlock()")
+	defer log.Println("Miner::Leaving ReceiveBlock()")
 
-	m.quit <- false
-	// MINEUR-05
+	// Do we already have this block in the chain?
+	for _, b := range m.blocks {
+		if reflect.DeepEqual(b, block) {
+			log.Println("We already have this block in the chain. Discarding block")
+			return nil
+		}
+	}
 
 	valid := false
 	//es-ce que le bloc precedant existe dans la chaine
@@ -232,10 +235,13 @@ func (m *Miner) ReceiveBlock(block node.Block) {
 		}
 	}
 
+	// We don't have any blocks and the received one is a genesis block
+	if block.Header.PreviousBlock == ([sha256.Size]byte{}) && len(m.blocks) == 0 {
+		valid = true
+	}
+
 	//que le hash est correct (bonne difficulter)
 	if valid {
-		valid = false
-
 		header := node.Header{
 			PreviousBlock: block.Header.PreviousBlock,
 			Nounce:        block.Header.Nounce,
@@ -245,39 +251,47 @@ func (m *Miner) ReceiveBlock(block node.Block) {
 		hash := sha256.Sum256([]byte(fmt.Sprintf("%v", header)))
 		firstCharacters := string(hash[:node.MiningDifficulty])
 		if strings.Count(firstCharacters, "0") == node.MiningDifficulty && hash == block.Header.Hash {
-			valid = true
+			log.Println("Received block's hash is valid! Stopping current mining operation.")
+			m.quit <- false
+			// MINEUR-05
+		} else {
+			log.Println("Received block's hash is not valid! Discarding block")
+			return nil
 		}
-	}
-	if !valid {
-		m.Start()
+
+	} else {
+		log.Println("Block does not exist in my chain! Ask my peers for the missing range of blocks")
+		// TODO: Implement fetching range of blocks from peers
+		return nil
 	}
 
-	//bloc valide? on doit lajouter a ma chaine et broadcast ?
-	//si ils nous manque des messages, on doit aller les cherches sur les autres mineurs ?
+	//TODO: add timestamp gap checking between messages
 
 	//on enleve les messages du bloc valide qui sont dans le bloc quon etait en train de miner
-	if valid {
-		for _, receivedMessage := range block.Messages {
-			for i, miningMessage := range m.miningBlock.Messages {
-				if reflect.DeepEqual(receivedMessage, miningMessage) {
-					m.miningBlock.Messages[i] = node.Message{}
-					i--
-				}
+
+	m.mutex.Lock()
+	for _, rcvMsg := range block.Messages {
+		for i := 0; i < len(m.waitingList); i++ {
+			if reflect.DeepEqual(rcvMsg, m.waitingList[i]) {
+				log.Printf("Message \"%s\" from peer \"%s\" is in waiting list. Removing it.", rcvMsg.Content, rcvMsg.Peer)
+				m.waitingList = append(m.waitingList[:i], m.waitingList[i+1:]...)
 			}
 		}
 	}
+	m.mutex.Unlock()
+	err := m.BroadcastBlock(block)
+	if err != nil {
+		return err
+	}
 
-	// compare receivedBlock with miningBlock and
-	// delete messages from miningBlock that are in the receivedBlock if the receivedBlock is valid
-	// start another mining if we have len(messageQueue) > node.BlockSize
+	m.Start()
+
+	return nil
 }
 
 func (m *Miner) mining() node.Block {
 	log.Println("Entering mining()")
 	defer log.Println("Leaving mining()")
-
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
 
 	select {
 	case <-m.quit:
@@ -288,6 +302,7 @@ func (m *Miner) mining() node.Block {
 		log.Println("Nounce : ", m.miningBlock.Header.Nounce)
 		m.miningBlock.Header.Hash = hashedHeader
 
+		m.mutex.Lock()
 		//supprimer les messages de la waitingList
 		for _, message := range m.miningBlock.Messages {
 			for j, unprocMessage := range m.waitingList {
@@ -297,6 +312,7 @@ func (m *Miner) mining() node.Block {
 				}
 			}
 		}
+		m.mutex.Unlock()
 
 		return m.miningBlock
 	}

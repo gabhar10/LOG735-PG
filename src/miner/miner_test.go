@@ -303,7 +303,7 @@ func TestMiner_SetupRPC(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.preFunc()
 			m := NewMiner(tt.args.port, []*node.Peer{})
-			if err := m.SetupRPC(tt.args.port); (err != nil) != tt.wantErr {
+			if err := m.SetupRPC(); (err != nil) != tt.wantErr {
 				t.Errorf("Miner.SetupRPC() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			tt.postFunc()
@@ -338,7 +338,7 @@ func TestMiner_Peer(t *testing.T) {
 					if rpc.Register(m.rpcHandler) != nil {
 						return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "8888"}}
 					}
-					m.SetupRPC("9002")
+					m.SetupRPC()
 					return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "9002"}}
 				}(),
 				mutex: new(sync.Mutex),
@@ -396,7 +396,7 @@ func TestMiner_Broadcast(t *testing.T) {
 					if rpc.Register(m.rpcHandler) != nil {
 						return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "8888"}}
 					}
-					m.SetupRPC("9002")
+					m.SetupRPC()
 					return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "9002"}}
 				}(),
 				mutex: new(sync.Mutex),
@@ -529,9 +529,10 @@ func TestMiner_ReceiveBlock(t *testing.T) {
 		block node.Block
 	}
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
 	}{
 		{
 			name: "Sunny day",
@@ -549,6 +550,7 @@ func TestMiner_ReceiveBlock(t *testing.T) {
 			args: args{
 				block: m.blocks[1],
 			},
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -563,7 +565,9 @@ func TestMiner_ReceiveBlock(t *testing.T) {
 				quit:              tt.fields.quit,
 				mutex:             tt.fields.mutex,
 			}
-			m.ReceiveBlock(tt.args.block)
+			if err := m.ReceiveBlock(tt.args.block); (err != nil) != tt.wantErr {
+				t.Errorf("Miner.ReceiveBlock() error = %v, wantErr %v", err, tt.wantErr)
+			}
 		})
 	}
 }
@@ -672,13 +676,14 @@ func TestMiner_BroadcastBlock(t *testing.T) {
 		in0 node.Block
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
+		name              string
+		fields            fields
+		args              args
+		expectedChainSize int
 	}{
 		{
-			name: "Sunny day",
+			// TODO: Send a valid block
+			name: "Sending invalid block",
 			fields: fields{
 				ID: "8000",
 				peers: func() []*node.Peer {
@@ -688,7 +693,7 @@ func TestMiner_BroadcastBlock(t *testing.T) {
 					if rpc.Register(m.rpcHandler) != nil {
 						return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "8888"}}
 					}
-					m.SetupRPC("9002")
+					m.SetupRPC()
 					return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "9002"}}
 				}(),
 				mutex: new(sync.Mutex),
@@ -699,6 +704,7 @@ func TestMiner_BroadcastBlock(t *testing.T) {
 					Messages: [node.BlockSize]node.Message{},
 				},
 			},
+			expectedChainSize: 0,
 		},
 	}
 	for _, tt := range tests {
@@ -708,8 +714,11 @@ func TestMiner_BroadcastBlock(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Error while peering: %v", err)
 			}
-			if err := m.BroadcastBlock(tt.args.in0); (err != nil) != tt.wantErr {
-				t.Errorf("Miner.BroadcastBlock() error = %v, wantErr %v", err, tt.wantErr)
+			if err := m.BroadcastBlock(tt.args.in0); err != nil {
+				t.Errorf("Miner.BroadcastBlock() error = %v", err)
+			}
+			if len(m.blocks) != tt.expectedChainSize {
+				t.Fatalf("Block was not accepted!")
 			}
 		})
 	}

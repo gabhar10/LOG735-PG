@@ -28,7 +28,7 @@ func TestClient_Peer(t *testing.T) {
 				peers: func() []*node.Peer {
 					driver := node.Peer{Host: "127.0.0.1", Port: "9001"}
 					m := miner.NewMiner("9002", []*node.Peer{&driver}).(*miner.Miner)
-					m.SetupRPC("9002")
+					m.SetupRPC()
 					return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "9002"}}
 				}(),
 				uiChannel:   nil,

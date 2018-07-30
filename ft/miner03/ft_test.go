@@ -21,7 +21,7 @@ func TestMiner03(t *testing.T) {
 				Port: ClientID},
 		}
 		m := miner.NewMiner(MinerID, minerPeers).(*miner.Miner)
-		m.SetupRPC(MinerID)
+		m.SetupRPC()
 		// Create client
 		clientPeers := []*node.Peer{
 			&node.Peer{

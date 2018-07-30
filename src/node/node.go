@@ -5,11 +5,11 @@ import (
 )
 
 type Node interface {
-	SetupRPC(string) error
+	SetupRPC() error
 	Peer() error
 	GetBlocks() []Block
 	ReceiveMessage(string, time.Time, string, int)
-	ReceiveBlock(Block)
+	ReceiveBlock(Block) error
 	Start()
 	Connect(string) error
 	Disconnect() error

@@ -30,7 +30,7 @@ func TestMiner04(t *testing.T) {
 			},
 		}
 		m := miner.NewMiner(MinerID, minerPeers).(*miner.Miner)
-		m.SetupRPC(MinerID)
+		m.SetupRPC()
 
 		clientPeers := []*node.Peer{
 			&node.Peer{

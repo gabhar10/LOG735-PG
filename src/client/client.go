@@ -3,11 +3,13 @@ package client
 import (
 	"LOG735-PG/src/node"
 	brpc "LOG735-PG/src/rpc"
+	"crypto/sha256"
 	"fmt"
 	"log"
 	"net"
-	"net/http"
 	"net/rpc"
+	"reflect"
+	"strings"
 	"time"
 )
 
@@ -27,7 +29,7 @@ type (
 func NewClient(port string, peers []*node.Peer, uiChannel chan node.Message, nodeChannel chan node.Message) node.Node {
 	c := &Client{
 		port,
-		make([]node.Block, node.MinBlocksReturnSize),
+		[]node.Block{},
 		peers,
 		new(brpc.NodeRPC),
 		uiChannel,
@@ -43,14 +45,18 @@ func (c *Client) Start() {
 	go c.StartMessageLoop()
 }
 
-func (c *Client) SetupRPC(port string) error {
-	rpc.Register(c.rpcHandler)
-	rpc.HandleHTTP()
-	l, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%s", port))
+func (c *Client) SetupRPC() error {
+	log.Println("Entering SetupRPC()")
+	defer log.Println("Leaving SetupRPC()")
+
+	s := rpc.NewServer()
+	s.Register(c.rpcHandler)
+
+	listener, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%s", c.ID))
 	if err != nil {
 		return err
 	}
-	go http.Serve(l, nil)
+	go s.Accept(listener)
 	return nil
 }
 
@@ -193,6 +199,82 @@ func (c *Client) StartMessageLoop() error {
 	return nil
 }
 
-func (c *Client) ReceiveBlock(block node.Block) {
-	// Do nothing
+func (c *Client) BroadcastBlock(b node.Block) error {
+	log.Println("Entering BroadcastBlock()")
+	defer log.Println("Leaving BroadcastBlock()")
+
+	if len(c.Peers) == 0 {
+		return fmt.Errorf("No peers are defined")
+	}
+
+	for _, peer := range c.Peers {
+		if peer.Conn == nil {
+			return fmt.Errorf("RPC connection handler of peer %s is nil", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
+
+		}
+		args := brpc.BlockRPC{
+			ConnectionRPC: brpc.ConnectionRPC{PeerID: c.ID},
+			Block:         b}
+		var reply *int
+		err := peer.Conn.Call("NodeRPC.DeliverBlock", &args, &reply)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Client) ReceiveBlock(block node.Block) error {
+	log.Println("Client::Entering ReceiveBlock()")
+	defer log.Println("Client::Leaving ReceiveBlock()")
+
+	log.Printf("Block Header: %v, Block Message: %v", block.Header, block.Messages)
+	// Do we already have this block in the chain?
+	for _, b := range c.blocks {
+		if reflect.DeepEqual(b, block) {
+			log.Println("We already have this block in the chain. Discarding block")
+			return nil
+		}
+	}
+
+	valid := false
+	//es-ce que le bloc precedant existe dans la chaine
+	for i := len(c.blocks) - 1; i >= 0; i-- {
+		if block.Header.PreviousBlock == c.blocks[i].Header.Hash {
+			valid = true
+			break
+		}
+	}
+
+	// We don't have any blocks and the received one is a genesis block
+	if block.Header.PreviousBlock == ([sha256.Size]byte{}) && len(c.blocks) == 0 {
+		valid = true
+	}
+
+	//que le hash est correct (bonne difficulter)
+	if valid {
+		header := node.Header{
+			PreviousBlock: block.Header.PreviousBlock,
+			Nounce:        block.Header.Nounce,
+			Date:          block.Header.Date,
+		}
+		header.Hash = [sha256.Size]byte{}
+		hash := sha256.Sum256([]byte(fmt.Sprintf("%v", header)))
+		firstCharacters := string(hash[:node.MiningDifficulty])
+		if strings.Count(firstCharacters, "0") == node.MiningDifficulty && hash == block.Header.Hash {
+			log.Println("Received block's hash is valid!")
+		} else {
+			log.Printf("Received block's hash is not valid! Discarding block (%v != %v)", header.Hash, hash)
+			return nil
+		}
+
+	} else {
+		log.Println("Block does not exist in my chain! Ask my peers for the missing range of blocks")
+		// TODO: Implement fetching range of blocks from peers
+		return nil
+	}
+
+	//TODO: add timestamp gap checking between messages
+
+	return c.BroadcastBlock(block)
 }
