@@ -15,7 +15,7 @@ import (
 
 type (
 	Client struct {
-		Host		   string
+		Host           string
 		ID             string            // i.e. Run-time port associated to container
 		blocks         []node.Block      // Can be a subset of the full chain
 		Peers          []*node.Peer      // Slice of Peers
@@ -127,12 +127,10 @@ func (c *Client) Connect(host string, anchorPort string) error {
 	// Request Miner to create incoming connection
 	var reply int
 
-
 	me := brpc.PeerRPC{
 		ConnectionRPC: brpc.ConnectionRPC{PeerID: c.ID},
-		Host: c.Host,
-		Port: c.ID}
-
+		Host:          c.Host,
+		Port:          c.ID}
 
 	err = client.Call("NodeRPC.Connect", &me, &reply)
 	if err != nil {
@@ -154,6 +152,11 @@ func (c *Client) Disconnect() error {
 
 	for _, conn := range c.Peers {
 		var reply int
+
+		if conn.Conn == nil {
+			log.Println("Error: Peer's connection is nil")
+			return fmt.Errorf("Error: Peer's connection is nil")
+		}
 		err := conn.Conn.Call("NodeRPC.Disconnect", &c.ID, &reply)
 		if err != nil {
 			log.Printf("Error while disconnecting: %v", err)
@@ -193,7 +196,6 @@ func (c *Client) CloseConnection(disconnectingPeer string) error {
 	return nil
 }
 
-
 func (c *Client) ReceiveMessage(content, temps, peer string, messageType int) error {
 	log.Printf("Client-%s::Entering ReceiveMessage()", c.ID)
 	defer log.Printf("Client-%s::Leaving ReceiveMessage()", c.ID)
@@ -208,6 +210,11 @@ func (c *Client) HandleUiMessage(msg node.Message) error {
 	for _, conn := range c.Peers {
 		var reply int
 		message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, msg.Content, msg.Time, brpc.MessageType}
+
+		if conn.Conn == nil {
+			log.Println("Error: Peer's connection is nil")
+			return fmt.Errorf("Error: Peer's connection is nil")
+		}
 		err := conn.Conn.Call("NodeRPC.DeliverMessage", message, &reply)
 		if err != nil {
 			log.Printf("Error while delivering message: %v", err)
@@ -231,6 +238,11 @@ func (c *Client) StartMessageLoop() error {
 			for _, peer := range c.Peers {
 				var reply int
 				message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, "Bonjour", time.Now().Format(time.RFC3339Nano), brpc.MessageType}
+
+				if peer.Conn == nil {
+					log.Println("Error: Peer's connection is nil")
+					return fmt.Errorf("Error: Peer's connection is nil")
+				}
 				err := peer.Conn.Call("NodeRPC.DeliverMessage", message, &reply)
 				if err != nil {
 					log.Printf("Error while trying to deliver message: %v", err)
@@ -247,24 +259,26 @@ func (c *Client) StartMessageLoop() error {
 	return nil
 }
 
-func (c *Client) GetAnchorBlock() ([]node.Block, error){
+func (c *Client) GetAnchorBlock() ([]node.Block, error) {
 	if len(c.Peers) > 0 {
-		if c.Peers[0].Conn != nil{
+		if c.Peers[0].Conn != nil {
 			var reply brpc.BlocksRPC
-			c.Peers[0].Conn.Call("NodeRPC.GetBlocks", nil ,&reply)
+
+			if c.Peers[0].Conn == nil {
+				log.Println("Error: Peer's connection is nil")
+				return nil, fmt.Errorf("Error: Peer's connection is nil")
+			}
+			c.Peers[0].Conn.Call("NodeRPC.GetBlocks", nil, &reply)
 			return reply.Blocks, nil
-		} else {
-			return nil, fmt.Errorf("no open connection with peer")
 		}
-	} else {
-		return nil, fmt.Errorf("there are no peer available to give a block")
+		return nil, fmt.Errorf("no open connection with peer")
 	}
+	return nil, fmt.Errorf("there are no peer available to give a block")
 }
 
-
-func (c *Client) ParseBlock(block node.Block) (error){
+func (c *Client) ParseBlock(block node.Block) error {
 	if c.uiChannel != nil {
-		for _, msg := range block.Messages{
+		for _, msg := range block.Messages {
 			log.Printf("Filling channel...")
 			c.uiChannel <- node.Message{msg.Peer, msg.Content, msg.Time}
 		}
@@ -287,12 +301,16 @@ func (c *Client) BroadcastBlock(b node.Block) error {
 			log.Printf("RPC connection handler of peer %s is nil", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
 			return fmt.Errorf("RPC connection handler of peer %s is nil", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
 
-
 		}
 		args := brpc.BlockRPC{
 			ConnectionRPC: brpc.ConnectionRPC{PeerID: c.ID},
 			Block:         b}
 		var reply *int
+
+		if peer.Conn == nil {
+			log.Println("Error: Peer's connection is nil")
+			return fmt.Errorf("Error: Peer's connection is nil")
+		}
 		err := peer.Conn.Call("NodeRPC.DeliverBlock", &args, &reply)
 		if err != nil {
 			log.Printf("Error while delivering block: %v", err)

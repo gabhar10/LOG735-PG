@@ -140,6 +140,11 @@ func (m *Miner) BroadcastBlock(b node.Block) error {
 			ConnectionRPC: brpc.ConnectionRPC{PeerID: peer.Port},
 			Block:         b}
 		var reply *int
+
+		if peer.Conn == nil {
+			log.Println("Error: Peer's connection is nil")
+			return fmt.Errorf("Error: Peer's connection is nil")
+		}
 		err := peer.Conn.Call("NodeRPC.DeliverBlock", &args, &reply)
 		if err != nil {
 			log.Printf("Error while delivering block: %v", err)
@@ -177,6 +182,11 @@ func (m *Miner) Broadcast(message node.Message) error {
 			Message:       message.Content,
 			Time:          message.Time}
 		var reply *int
+
+		if peer.Conn == nil {
+			log.Println("Error: Peer's connection is nil")
+			return fmt.Errorf("Error: Peer's connection is nil")
+		}
 		err := peer.Conn.Call("NodeRPC.DeliverMessage", &args, &reply)
 		if err != nil {
 			log.Printf("Error while delivering message: %v", err)
@@ -344,7 +354,6 @@ func (m *Miner) mining() (node.Block, error) {
 		return block, nil
 	}
 }
-
 
 func (m *Miner) findingNounce(block *node.Block) ([sha256.Size]byte, error) {
 	log.Printf("Miner-%s::Entering findingNounce()", m.ID)
