@@ -7,6 +7,7 @@ import (
 	"testing"
 )
 
+// CLIENT-05: L’application client doit permettre à l’utilisateur de se déconnecter
 func TestClient05(t *testing.T) {
 	const MinerID = "8888"
 	const ClientID = "8889"

@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// Un mineur doit écouter pour les transactions des clients dans le réseau et pouvoir les accumuler dans une liste.
+// MINEUR-03: Un mineur doit écouter pour les transactions des clients dans le réseau et pouvoir les accumuler dans une liste.
 func TestMiner03(t *testing.T) {
 	const MinerID = "8888"
 	const ClientID = "8889"

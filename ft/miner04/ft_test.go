@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// MINEUR-04: Un mineur doit respecter l’ordre chronologique de l’envoi des messages par les clients lors de la création de blocs.
 func TestMiner04(t *testing.T) {
 	const MinerID = "8889"
 	const Client1ID = "8888"
