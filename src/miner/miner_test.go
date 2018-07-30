@@ -202,7 +202,7 @@ func TestNewMiner(t *testing.T) {
 				if miner.ID != tt.args.port || len(miner.peers) != 1 || miner.peers[0] != tt.args.peers[0] {
 					t.Errorf("NewMiner() did not populate with port %s and peers %v", tt.args.port, tt.args.peers)
 				}
-				if cap(miner.blocks) != node.MinBlocksReturnSize || cap(miner.IncomingMsgChan) != node.MessagesChannelSize || cap(miner.incomingBlockChan) != node.BlocksChannelSize {
+				if cap(miner.IncomingMsgChan) != node.MessagesChannelSize || cap(miner.incomingBlockChan) != node.BlocksChannelSize {
 					t.Errorf("NewMiner() did not return a miner with attributes of proper length")
 				}
 			} else {
@@ -711,6 +711,80 @@ func TestMiner_BroadcastBlock(t *testing.T) {
 			}
 			if err := m.BroadcastBlock(tt.args.in0); (err != nil) != tt.wantErr {
 				t.Errorf("Miner.BroadcastBlock() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestMiner_clearProcessedMessages(t *testing.T) {
+	type fields struct {
+		ID                string
+		blocks            []node.Block
+		peers             []*node.Peer
+		rpcHandler        *brpc.NodeRPC
+		IncomingMsgChan   chan node.Message
+		incomingBlockChan chan node.Block
+		quit              chan bool
+		mutex             *sync.Mutex
+		waitingList       []node.Message
+	}
+	type args struct {
+		block *node.Block
+	}
+
+	commonMessages := []node.Message{}
+	for i := 0; i < 5; i++ {
+		commonMessages = append(commonMessages, node.Message{Peer: "123", Content: "Common message", Time: time.Now()})
+	}
+
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "Sunny day",
+			fields: fields{
+				ID:          "123",
+				peers:       []*node.Peer{},
+				waitingList: commonMessages,
+			},
+			args: args{
+				block: func() *node.Block {
+					m := NewMiner("456", []*node.Peer{}).(*Miner)
+					// Append common messages in queue
+					for _, msg := range commonMessages {
+						m.IncomingMsgChan <- msg
+					}
+
+					for i := 0; i < 30; i++ {
+						m.IncomingMsgChan <- node.Message{
+							Peer:    "123",
+							Content: "This is a test",
+							Time:    time.Now()}
+					}
+					b := m.mining()
+					return &b
+				}(),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := &Miner{
+				ID:                tt.fields.ID,
+				blocks:            tt.fields.blocks,
+				peers:             tt.fields.peers,
+				rpcHandler:        tt.fields.rpcHandler,
+				IncomingMsgChan:   tt.fields.IncomingMsgChan,
+				incomingBlockChan: tt.fields.incomingBlockChan,
+				quit:              tt.fields.quit,
+				mutex:             tt.fields.mutex,
+				waitingList:       tt.fields.waitingList,
+			}
+			m.clearProcessedMessages(tt.args.block)
+			if len(m.waitingList) > 0 {
+				t.Fatalf("Waiting list should be empty")
 			}
 		})
 	}

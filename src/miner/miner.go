@@ -47,11 +47,12 @@ func NewMiner(port string, peers []*node.Peer) node.Node {
 
 func (m *Miner) Start() {
 	go func() {
-		block := m.mining()
-		m.blocks = append(m.blocks, block)
+		m.miningBlock = m.mining()
+		m.blocks = append(m.blocks, m.miningBlock)
 		//MINEUR-06
 		m.BroadcastBlock(m.blocks)
 		m.miningBlock = node.Block{}
+		m.clearProcessedMessages(&m.miningBlock)
 	}()
 }
 
@@ -82,9 +83,6 @@ func (m *Miner) Peer() error {
 		if err != nil {
 			return err
 		}
-		if len(reply.Blocks) < node.MinBlocksReturnSize {
-			return fmt.Errorf("Returned size of blocks is below %d", node.MinBlocksReturnSize)
-		}
 
 		peer.Conn = client
 		log.Printf("Successfully peered with node-%s\n", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
@@ -93,7 +91,7 @@ func (m *Miner) Peer() error {
 	return nil
 }
 
-func (m *Miner) BroadcastBlock([]node.Block) error {
+func (m *Miner) BroadcastBlock(args []node.Block) error {
 	if len(m.peers) == 0 {
 		return fmt.Errorf("No peers are defined")
 	}
@@ -169,17 +167,15 @@ func (m *Miner) CreateBlock() node.Block {
 
 func (m *Miner) ReceiveMessage(content string, temps time.Time, peer string) {
 	//MINEUR-04
-	found := false
+	// Check if we don't alrady have the message in the waiting list
 	for _, m := range m.waitingList {
 		if reflect.DeepEqual(m, node.Message{peer, content, temps}) {
-			found = true
-			break
+			return
 		}
 	}
+
 	message := node.Message{peer, content, temps}
-	if !found {
-		m.Broadcast(message)
-	}
+	m.Broadcast(message)
 	m.IncomingMsgChan <- message
 }
 
@@ -285,4 +281,16 @@ findingNounce:
 		}
 	}
 	return hashedHeader, nil
+}
+
+func (m *Miner) clearProcessedMessages(block *node.Block) {
+	//supprimer les messages de la waitingList
+	for _, message := range block.Messages {
+		for j, unprocMessage := range m.waitingList {
+			if reflect.DeepEqual(unprocMessage, message) {
+				m.waitingList = append(m.waitingList[:j], m.waitingList[j+1:]...)
+				break
+			}
+		}
+	}
 }
