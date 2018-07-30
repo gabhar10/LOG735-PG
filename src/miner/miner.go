@@ -346,9 +346,10 @@ func (m *Miner) CloseConnection(disconnectingPeer string) error {
 	for i := 0; i < len(m.Peers); i++ {
 		if m.Peers[i].Port == disconnectingPeer {
 			log.Printf("Closing connection with %s", disconnectingPeer)
-			m.Peers[i].Conn.Close()
-			m.Peers[i] = m.Peers[len(m.Peers)-1]
-			m.Peers = m.Peers[:len(m.Peers)-1]
+			if m.Peers[i].Conn != nil {
+				m.Peers[i].Conn.Close()
+			}
+			m.Peers = append(m.Peers[:i], m.Peers[i+1:]...)
 			break
 		} else {
 			disconnectionNotice := brpc.MessageRPC{
@@ -357,6 +358,9 @@ func (m *Miner) CloseConnection(disconnectingPeer string) error {
 				time.Now(),
 				brpc.DisconnectionType}
 			var reply int
+			if m.Peers[i].Conn == nil {
+				return fmt.Errorf("Miner does not have a connection with peer %d", i)
+			}
 			m.Peers[i].Conn.Call("NodeRPC.DeliverMessage", disconnectionNotice, &reply)
 		}
 	}

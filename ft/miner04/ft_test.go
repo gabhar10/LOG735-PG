@@ -54,46 +54,46 @@ func TestMiner04(t *testing.T) {
 			t.Fatalf("Error while peering: %v", err)
 		}
 
-		nodeChan1 <- node.Message{
+		msg := node.Message{
 			Peer:    Client1ID,
 			Content: TestContent1,
 			Time:    time.Now(),
 		}
 
-		err = c1.HandleUiMessage()
+		err = c1.HandleUiMessage(msg)
 		if err != nil {
 			t.Fatalf("Error while sending message: %v", err)
 		}
 
-		nodeChan2 <- node.Message{
+		msg = node.Message{
 			Peer:    Client1ID,
 			Content: TestContent3,
 			Time:    time.Now(),
 		}
 
-		err = c2.HandleUiMessage()
+		err = c2.HandleUiMessage(msg)
 		if err != nil {
 			t.Fatalf("Error while sending message: %v", err)
 		}
 
-		nodeChan1 <- node.Message{
+		msg = node.Message{
 			Peer:    Client1ID,
 			Content: TestContent2,
 			Time:    time.Now(),
 		}
 
-		err = c1.HandleUiMessage()
+		err = c1.HandleUiMessage(msg)
 		if err != nil {
 			t.Fatalf("Error while sending message: %v", err)
 		}
 
-		nodeChan2 <- node.Message{
+		msg = node.Message{
 			Peer:    Client1ID,
 			Content: TestContent4,
 			Time:    time.Now(),
 		}
 
-		err = c2.HandleUiMessage()
+		err = c2.HandleUiMessage(msg)
 		if err != nil {
 			t.Fatalf("Error while sending message: %v", err)
 		}
@@ -102,7 +102,7 @@ func TestMiner04(t *testing.T) {
 			t.Fatalf("Message queue of miner should be 4")
 		}
 
-		msg := <-m.IncomingMsgChan
+		msg = <-m.IncomingMsgChan
 		if msg.Content != TestContent1 || msg.Time.After(time.Now()) {
 			t.Fatalf("Miner received wrong message")
 		}
