@@ -11,7 +11,7 @@ func TestClient05_disconnect(t *testing.T) {
 	const MinerID = "9888"
 	const ClientID = "9889"
 	const Localhost = "localhost"
-// CLIENT-05: L’application client doit permettre à l’utilisateur de se déconnecter
+	// CLIENT-05: L’application client doit permettre à l’utilisateur de se déconnecter
 
 	t.Run("Client disconnect from miner", func(t *testing.T) {
 		// Create miner
@@ -35,7 +35,7 @@ func TestClient05_disconnect(t *testing.T) {
 		nodeChan := make(chan node.Message, 1)
 
 		c := client.NewClient(Localhost, ClientID, clientPeers, nil, nodeChan).(*client.Client)
-
+		err = c.Peer()
 		if err != nil {
 			t.Errorf("Error while peering: %v", err)
 		}
