@@ -5,10 +5,9 @@ import (
 	"LOG735-PG/src/miner"
 	"LOG735-PG/src/node"
 	"testing"
-	"time"
 )
 
-func TestMiner03(t *testing.T) {
+func TestClient05(t *testing.T) {
 	const MinerID = "8888"
 	const ClientID = "8889"
 	const TestContent = "This is a test"
@@ -36,23 +35,22 @@ func TestMiner03(t *testing.T) {
 			t.Fatalf("Error while peering: %v", err)
 		}
 
-
-		err = c.HandleUiMessage(node.Message{
-			Peer:    ClientID,
-			Content: TestContent,
-			Time:    time.Now(),
-		})
-		if err != nil {
-			t.Fatalf("Error while sending message: %v", err)
+		if len(m.Peers) == 0{
+			t.Fatalf("Miner's peers slice is empty")
 		}
 
-		if len(m.IncomingMsgChan) != 1 {
-			t.Fatalf("Message queue of miner should be 1")
+		if len(c.Peers) == 0{
+			t.Fatalf("Miner's peers slice is empty")
 		}
 
-		msg := <-m.IncomingMsgChan
-		if msg.Content != TestContent || msg.Time.After(time.Now()) {
-			t.Fatalf("Miner received wrong message")
+		err = c.Disconnect()
+
+		if len(m.Peers) > 0{
+			t.Fatalf("Miner still has the connection of the peer")
+		}
+
+		if len(c.Peers) > 0{
+			t.Fatal("Client still has the connection of the peer")
 		}
 	})
 }

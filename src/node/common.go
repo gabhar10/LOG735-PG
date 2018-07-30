@@ -22,3 +22,8 @@ type Peer struct {
 	Port string
 	Conn *rpc.Client
 }
+
+type PeerConnection struct {
+	ID   string      // ID of peer
+	Conn *rpc.Client // Connection of peer
+}
