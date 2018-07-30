@@ -35,21 +35,24 @@ func TestClient05(t *testing.T) {
 			t.Fatalf("Error while peering: %v", err)
 		}
 
-		if len(m.Peers) == 0{
+		if len(m.Peers) == 0 {
 			t.Fatalf("Miner's peers slice is empty")
 		}
 
-		if len(c.Peers) == 0{
+		if len(c.Peers) == 0 {
 			t.Fatalf("Miner's peers slice is empty")
 		}
 
 		err = c.Disconnect()
+		if err != nil {
+			t.Fatalf("Error returned while disconnecting: %v", err)
+		}
 
-		if len(m.Peers) > 0{
+		if len(m.Peers) > 0 {
 			t.Fatalf("Miner still has the connection of the peer")
 		}
 
-		if len(c.Peers) > 0{
+		if len(c.Peers) > 0 {
 			t.Fatal("Client still has the connection of the peer")
 		}
 	})
