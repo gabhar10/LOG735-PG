@@ -163,6 +163,8 @@ func (c *Client) ReceiveMessage(content string, temps time.Time, peer string, me
 
 func (c *Client) HandleUiMessage(message node.Message) error {
 
+	log.Printf("Entering HandleUiMessage()")
+	defer log.Printf("Leaving HandleUiMessage()")
 	for _, conn := range c.Peers {
 		var reply int
 		message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, message.Content, message.Time, brpc.MessageType}
@@ -216,5 +218,11 @@ func (c *Client) ParseChain([]node.Block) (error){
 }
 
 func (c *Client) ReceiveBlock(block node.Block) {
-	// Do nothing
+	if c.uiChannel != nil {
+		for _, msg := range block.Messages{
+			log.Printf("Filling channel...")
+			c.uiChannel <- node.Message{msg.Peer, msg.Content, msg.Time}
+		}
+
+	}
 }

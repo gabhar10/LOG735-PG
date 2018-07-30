@@ -242,7 +242,7 @@ func (m *Miner) mining() node.Block {
 		return node.Block{}
 	default:
 		block := m.CreateBlock()
-		hashedHeader, _ := m.findingNounce(&block)
+		hashedHeader, _ := m.FindingNounce(&block)
 		log.Println("Nounce : ", block.Header.Nounce)
 		block.Header.Hash = hashedHeader
 
@@ -250,7 +250,7 @@ func (m *Miner) mining() node.Block {
 	}
 }
 
-func (m *Miner) findingNounce(block *node.Block) ([sha256.Size]byte, error) {
+func (m *Miner) FindingNounce(block *node.Block) ([sha256.Size]byte, error) {
 	log.Println("Entering findingNounce()")
 	defer log.Println("Leaving findingNounce()")
 

@@ -2,10 +2,11 @@ package miner03
 
 import (
 	"LOG735-PG/src/client"
-	"LOG735-PG/src/miner"
 	"LOG735-PG/src/node"
 	"testing"
+	"LOG735-PG/src/miner"
 	"time"
+	"log"
 )
 
 func TestClient02(t *testing.T) {
@@ -13,15 +14,15 @@ func TestClient02(t *testing.T) {
 	const ClientID = "8889"
 	const TestContent = "This is a test"
 
-	t.Run("Send message to miner", func(t *testing.T) {
-		// Create miner
+	t.Run("Parse block from miner", func(t *testing.T) {
+
 		minerPeers := []*node.Peer{
 			&node.Peer{
 				Host: "127.0.0.1",
 				Port: ClientID},
 		}
 		m := miner.NewMiner(MinerID, minerPeers).(*miner.Miner)
-		m.SetupRPC(MinerID)
+
 		// Create client
 		clientPeers := []*node.Peer{
 			&node.Peer{
@@ -29,41 +30,57 @@ func TestClient02(t *testing.T) {
 				Port: MinerID},
 		}
 		// Channel for communication
-		nodeChan := make(chan node.Message, 1)
-		c := client.NewClient(ClientID, clientPeers, nil, nodeChan).(*client.Client)
+		uiChan := make(chan node.Message, node.BlockSize)
+		c := client.NewClient(ClientID, clientPeers, uiChan, nil).(*client.Client)
 
-		err := c.Peer()
-		if err != nil {
-			t.Fatalf("Error while peering: %v", err)
+		//err := c.Peer()
+		//if err != nil {
+		//	t.Fatalf("Error while peering: %v", err)
+		//}
+
+		//var chain []node.Block
+		var block1 node.Block
+		var block2 node.Block
+
+
+		for i := 0; i < node.BlockSize; i++{
+			block1.Messages[i] = node.Message{"1","test-1",time.Now()}
+		}
+		hashedHeader1, _ := m.FindingNounce(&block1)
+		block1.Header.Hash = hashedHeader1
+		log.Printf("%v", block1)
+		go c.ReceiveBlock(block1)
+
+		for i := 0; i < node.BlockSize; i++{
+			msg := <-uiChan
+			if msg.Content != "test-1"{
+				t.Fatalf("Error message was %s; should be test-1", msg.Content)
+			}
+			if msg.Peer != "1"{
+				t.Fatalf("Error peer was %s; should be 1", msg.Peer)
+			}
 		}
 
-		for i := 0; i < node.BlockSize * 2; i++{
-			c. HandleUiMessage(node.Message{
-				Peer:    ClientID,
-				Content: string(i),
-				Time:    time.Now(),
-			})
+
+
+		for i := 0; i < node.BlockSize; i++{
+			block2.Messages[i] = node.Message{"2","test-2",time.Now()}
+		}
+		hashedHeader2, _ := m.FindingNounce(&block2)
+		block2.Header.Hash = hashedHeader2
+
+		go c.ReceiveBlock(block2)
+		for i := 0; i < node.BlockSize; i++{
+			msg := <-uiChan
+			if msg.Content != "test-2"{
+				t.Fatalf("Error message was %s; should be test-2", msg.Content)
+			}
+			if msg.Peer != "2"{
+				t.Fatalf("Error peer was %s; should be 2", msg.Peer)
+			}
 		}
 
-		err = c.HandleUiMessage(node.Message{
-			Peer:    ClientID,
-			Content: TestContent,
-			Time:    time.Now(),
-		})
-		if err != nil {
-			t.Fatalf("Error while sending message: %v", err)
-		}
 
-		if len(m.IncomingMsgChan) != 1 {
-			t.Fatalf("Message queue of miner should be 1")
-		}
-
-		msg := <-m.IncomingMsgChan
-		if msg.Content != TestContent || msg.Time.After(time.Now()) {
-			t.Fatalf("Miner received wrong message")
-		}
-
-		c.GetAnchorBlock()
 
 
 

@@ -88,7 +88,7 @@ func TestMiner_findingNounce(t *testing.T) {
 				quit:              tt.fields.quit,
 				mutex:             tt.fields.mutex,
 			}
-			got, err := m.findingNounce(tt.args.block)
+			got, err := m.FindingNounce(tt.args.block)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Miner.findingNounce() error = %v, wantErr %v", err, tt.wantErr)
 			}

@@ -16,7 +16,7 @@ import (
 const HttpPort = ":8000"
 
 var clients = make(map[*websocket.Conn]bool) // Websocket Slice for exchange between server and web application
-var uiChannel = make(chan node.Message)      // Channel for incoming message from Client Node
+var uiChannel = make(chan node.Message, node.BlockSize)      // Channel for incoming message from Client Node
 var nodeChannel = make(chan node.Message)    // Channel for outgoing message from web application
 var upgrader = websocket.Upgrader{}          // Used to upgrade HTTP connection to websocket
 var clientNode node.Node                     // Server's client nod reference
