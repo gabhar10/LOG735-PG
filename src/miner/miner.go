@@ -114,7 +114,6 @@ func (m *Miner) BroadcastBlock([]node.Block) error {
 	log.Println("Entering BroadcastBlock()")
 	defer log.Println("Leaving BroadcastBlock()")
 
-
 	if len(m.Peers) == 0 {
 		return fmt.Errorf("No peers are defined")
 	}
@@ -189,7 +188,6 @@ func (m *Miner) CreateBlock() node.Block {
 
 	for i := 0; i < node.BlockSize; i++ {
 		msg := <-m.IncomingMsgChan
-		m.waitingList = append(m.waitingList, msg)
 		messages[i] = msg
 	}
 
@@ -203,16 +201,21 @@ func (m *Miner) ReceiveMessage(content string, temps time.Time, peer string, mes
 	//MINEUR-04
 
 	// Check if we don't alrady have the message in the waiting list
-
+	msg := node.Message{
+		Peer:    peer,
+		Content: content,
+		Time:    temps,
+	}
 	for _, m := range m.waitingList {
-		if reflect.DeepEqual(m, node.Message{peer, content, temps}) {
+		if reflect.DeepEqual(m, msg) {
 			return
 		}
 	}
+	log.Printf("Appending message \"%s\" from peer \"%s\" in waiting list", msg.Content, msg.Peer)
 
-	message := node.Message{peer, content, temps}
-	m.Broadcast(message)
-	m.IncomingMsgChan <- message
+	m.waitingList = append(m.waitingList, msg)
+	m.Broadcast(msg)
+	m.IncomingMsgChan <- msg
 }
 
 func (m *Miner) ReceiveBlock(block node.Block) {
@@ -273,7 +276,6 @@ findingNounce:
 	}
 	return hashedHeader, nil
 }
-
 
 func (m Miner) Disconnect() error {
 	log.Println("Entering Disconnect()")

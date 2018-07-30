@@ -436,9 +436,9 @@ func TestMiner_ReceiveMessage(t *testing.T) {
 		mutex             *sync.Mutex
 	}
 	type args struct {
-		content string
-		temps   time.Time
-		peer    string
+		content     string
+		temps       time.Time
+		peer        string
 		messageType int
 	}
 	tests := []struct {
@@ -453,7 +453,7 @@ func TestMiner_ReceiveMessage(t *testing.T) {
 				peers: []*node.Peer{},
 			},
 			args: func() []args {
-				msgs := make([]args, node.MessagesChannelSize/2)
+				msgs := []args{}
 				for i := 0; i < node.MessagesChannelSize/2; i++ {
 					msgs = append(msgs, args{"Hello", time.Now(), "", brpc.MessageType})
 				}
