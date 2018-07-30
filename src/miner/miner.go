@@ -139,8 +139,6 @@ func (m *Miner) GetBlocks() []node.Block {
 	log.Println("Entering GetBlocks()")
 	defer log.Println("Leaving GetBlocks()")
 
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
 	return m.blocks
 }
 

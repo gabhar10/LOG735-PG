@@ -1,14 +1,15 @@
-package miner04
+package miner06
 
 import (
 	"LOG735-PG/src/client"
 	"LOG735-PG/src/miner"
 	"LOG735-PG/src/node"
+	"reflect"
 	"testing"
 	"time"
 )
 
-func TestMiner04(t *testing.T) {
+func TestMiner06(t *testing.T) {
 	const MinerID = "8889"
 	const Client1ID = "8888"
 	const Client2ID = "8887"
@@ -16,6 +17,7 @@ func TestMiner04(t *testing.T) {
 	const TestContent2 = "This is a another test from Client1"
 	const TestContent3 = "This is a test from Client2"
 	const TestContent4 = "This is a another test from Client2"
+	const TestContent5 = "This is again another test from Client2"
 
 	t.Run("Send message to miner", func(t *testing.T) {
 		// Create miner
@@ -30,7 +32,11 @@ func TestMiner04(t *testing.T) {
 			},
 		}
 		m := miner.NewMiner(MinerID, minerPeers).(*miner.Miner)
-		m.SetupRPC(MinerID)
+		err := m.SetupRPC(MinerID)
+		if err != nil {
+			t.Fatalf("Miner could not setup RPC: %v", err)
+		}
+		m.Start()
 
 		clientPeers := []*node.Peer{
 			&node.Peer{
@@ -41,7 +47,7 @@ func TestMiner04(t *testing.T) {
 		// Create client1
 		nodeChan1 := make(chan node.Message, 1)
 		c1 := client.NewClient(Client1ID, clientPeers, nil, nodeChan1).(*client.Client)
-		err := c1.Peer()
+		err = c1.Peer()
 		if err != nil {
 			t.Fatalf("Error while peering: %v", err)
 		}
@@ -98,28 +104,52 @@ func TestMiner04(t *testing.T) {
 			t.Fatalf("Error while sending message: %v", err)
 		}
 
-		if len(m.IncomingMsgChan) != 4 {
-			t.Fatalf("Message queue of miner should be 4")
+		msg = node.Message{
+			Peer:    Client2ID,
+			Content: TestContent5,
+			Time:    time.Now(),
 		}
 
-		msg = <-m.IncomingMsgChan
-		if msg.Content != TestContent1 || msg.Time.After(time.Now()) {
-			t.Fatalf("Miner received wrong message")
+		err = c2.HandleUiMessage(msg)
+		if err != nil {
+			t.Fatalf("Error while sending message: %v", err)
 		}
 
-		msg = <-m.IncomingMsgChan
-		if msg.Content != TestContent3 || msg.Time.After(time.Now()) {
-			t.Fatalf("Miner received wrong message")
+		// Wait 25 seconds for miner to mine its block
+		received := false
+		for i := 0; i < 5; i++ {
+			if len(c1.GetBlocks()) > 0 && len(c2.GetBlocks()) > 0 {
+				received = true
+				break
+			}
+			time.Sleep(time.Second * 2)
 		}
 
-		msg = <-m.IncomingMsgChan
-		if msg.Content != TestContent2 || msg.Time.After(time.Now()) {
-			t.Fatalf("Miner received wrong message")
+		if !received {
+			t.Fatalf("Never received a block")
 		}
 
-		msg = <-m.IncomingMsgChan
-		if msg.Content != TestContent4 || msg.Time.After(time.Now()) {
-			t.Fatalf("Miner received wrong message")
+		c1Blocks := c1.GetBlocks()
+		c2Blocks := c2.GetBlocks()
+
+		if !reflect.DeepEqual(c1Blocks, c2Blocks) {
+			t.Fatalf("Both clients did not receive the same block")
+		}
+
+		if c1Blocks[0].Messages[0].Content != TestContent1 {
+			t.Fatalf("First message is not in right order")
+		}
+		if c1Blocks[0].Messages[1].Content != TestContent3 {
+			t.Fatalf("Second message is not in right order")
+		}
+		if c1Blocks[0].Messages[2].Content != TestContent2 {
+			t.Fatalf("Third message is not in right order")
+		}
+		if c1Blocks[0].Messages[3].Content != TestContent4 {
+			t.Fatalf("Fourth message is not in right order")
+		}
+		if c1Blocks[0].Messages[4].Content != TestContent5 {
+			t.Fatalf("Fifth message is not in right order")
 		}
 	})
 }
