@@ -66,12 +66,13 @@ for i in MINERS:
     sample = random.sample(ANCHOR_MINERS + list(filter(lambda x: x['port'] != i['port'], MINERS)) , MAX_MINER_PEERS-1)
     for j in sample:
         i['peers'].append(j['port'])
+        j['peers'].append(i['port']) # Bidirectional relationship
 
 # Connect clients to a random anchor
 for i in CLIENTS:
-    i['peers'].append(random.choice(ANCHOR_MINERS)['port'])
-	#for anchor in ANCHOR_MINERS:
-	#	i['peers'].append(anchor['port'])
+    am = random.choice(ANCHOR_MINERS)
+    i['peers'].append(am['port'])
+    am['peers'].append(i['port']) # Bidirectional relationship
 
 # Randomly select malicious miners
 for i in random.sample(MINERS, args.num_mal_miners):
