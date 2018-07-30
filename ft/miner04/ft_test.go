@@ -30,7 +30,10 @@ func TestMiner04(t *testing.T) {
 			},
 		}
 		m := miner.NewMiner(MinerID, minerPeers).(*miner.Miner)
-		m.SetupRPC()
+		err := m.SetupRPC()
+		if err != nil {
+			t.Errorf("Error while trying to setup RPC: %v", err)
+		}
 
 		clientPeers := []*node.Peer{
 			&node.Peer{
@@ -42,7 +45,7 @@ func TestMiner04(t *testing.T) {
 		nodeChan1 := make(chan node.Message, 1)
 		c1 := client.NewClient(Client1ID, clientPeers, nil, nodeChan1).(*client.Client)
 
-		err := c1.SetupRPC()
+		err = c1.SetupRPC()
 		if err != nil {
 			t.Errorf("Error while setting up RPC with client: %v", err)
 		}

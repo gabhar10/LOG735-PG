@@ -218,7 +218,11 @@ func (c *Client) StartMessageLoop() error {
 			for _, peer := range c.Peers {
 				var reply int
 				message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, "Bonjour", time.Now().Format(time.RFC3339Nano), brpc.MessageType}
-				peer.Conn.Call("NodeRPC.DeliverMessage", message, &reply)
+				err := peer.Conn.Call("NodeRPC.DeliverMessage", message, &reply)
+				if err != nil {
+					log.Printf("Error while trying to deliver message: %v", err)
+					return fmt.Errorf("Error while trying to deliver message: %v", err)
+				}
 			}
 			if c.nodeChannel != nil {
 				c.uiChannel <- node.Message{c.ID, "Bonjour", time.Now().Format(time.RFC3339Nano)}

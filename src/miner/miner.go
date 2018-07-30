@@ -391,7 +391,11 @@ func (m *Miner) CloseConnection(disconnectingPeer string) error {
 			if m.Peers[i].Conn == nil {
 				return fmt.Errorf("Miner does not have a connection with peer %d", i)
 			}
-			m.Peers[i].Conn.Call("NodeRPC.DeliverMessage", disconnectionNotice, &reply)
+			err := m.Peers[i].Conn.Call("NodeRPC.DeliverMessage", disconnectionNotice, &reply)
+			if err != nil {
+				log.Printf("Error while trying to deliver message to peer: %v", err)
+				return err
+			}
 		}
 	}
 	return nil

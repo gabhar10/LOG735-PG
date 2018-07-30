@@ -40,7 +40,7 @@ func TestMiner06(t *testing.T) {
 		m := miner.NewMiner(MinerID, minerPeers).(*miner.Miner)
 		err := m.SetupRPC()
 		if err != nil {
-			t.Fatalf("Miner could not setup RPC: %v", err)
+			t.Errorf("Miner could not setup RPC: %v", err)
 		}
 		m.Start()
 

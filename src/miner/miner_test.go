@@ -338,7 +338,10 @@ func TestMiner_Peer(t *testing.T) {
 					if rpc.Register(m.rpcHandler) != nil {
 						return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "8888"}}
 					}
-					m.SetupRPC()
+					err := m.SetupRPC()
+					if err != nil {
+						t.Errorf("Error while trying to setup RPC: %v", err)
+					}
 					return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "9002"}}
 				}(),
 				mutex: new(sync.Mutex),
@@ -396,7 +399,10 @@ func TestMiner_Broadcast(t *testing.T) {
 					if rpc.Register(m.rpcHandler) != nil {
 						return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "8888"}}
 					}
-					m.SetupRPC()
+					err := m.SetupRPC()
+					if err != nil {
+						t.Errorf("Error while trying to setup RPC: %v", err)
+					}
 					return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "9002"}}
 				}(),
 				mutex: new(sync.Mutex),
