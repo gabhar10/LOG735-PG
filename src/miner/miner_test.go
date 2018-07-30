@@ -199,7 +199,7 @@ func TestNewMiner(t *testing.T) {
 			got := NewMiner(tt.args.port, tt.args.peers)
 			miner, ok := got.(*Miner)
 			if ok {
-				if miner.ID != tt.args.port || len(miner.peers) != 1 || miner.peers[0] != tt.args.peers[0] {
+				if miner.ID != tt.args.port || len(miner.Peers) != 1 || miner.Peers[0] != tt.args.peers[0] {
 					t.Errorf("NewMiner() did not populate with port %s and peers %v", tt.args.port, tt.args.peers)
 				}
 				if cap(miner.blocks) != node.MinBlocksReturnSize || cap(miner.IncomingMsgChan) != node.MessagesChannelSize || cap(miner.incomingBlockChan) != node.BlocksChannelSize {

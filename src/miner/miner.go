@@ -86,7 +86,7 @@ func (m *Miner) Peer() error {
 	log.Println("Entering Peer()")
 	defer log.Println("Leaving Peer()")
 
-	for _, peer := range m.peers {
+	for _, peer := range m.Peers {
 		client, err := brpc.ConnectTo(*peer)
 		if err != nil {
 			return err
@@ -112,7 +112,7 @@ func (m *Miner) BroadcastBlock([]node.Block) error {
 	log.Println("Entering BroadcastBlock()")
 	defer log.Println("Leaving BroadcastBlock()")
 
-	for _, peer := range m.peers {
+	for _, peer := range m.Peers {
 		client, err := brpc.ConnectTo(*peer)
 		if err != nil {
 			return err
@@ -142,11 +142,11 @@ func (m *Miner) Broadcast(message node.Message) error {
 	// DeliverMessage (RPC) to peers
 	// To implement
 
-	if len(m.peers) == 0 {
+	if len(m.Peers) == 0 {
 		return fmt.Errorf("No peers are defined")
 	}
 
-	for _, peer := range m.peers {
+	for _, peer := range m.Peers {
 		if peer.Conn == nil {
 			return fmt.Errorf("RPC connection handler of peer %s is nil", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
 		}
@@ -289,12 +289,12 @@ func (m *Miner) CloseConnection(disconnectingPeer string) error {
 	log.Println("Entering CloseConnection()")
 	defer log.Println("Leaving CloseConnection()")
 
-	for i := 0; i < len(m.peers); i++ {
-		if m.peers[i].Port == disconnectingPeer {
+	for i := 0; i < len(m.Peers); i++ {
+		if m.Peers[i].Port == disconnectingPeer {
 			log.Printf("Closing connection with %s", disconnectingPeer)
-			m.peers[i].Conn.Close()
-			m.peers[i] = m.peers[len(m.peers)-1]
-			m.peers = m.peers[:len(m.peers)-1]
+			m.Peers[i].Conn.Close()
+			m.Peers[i] = m.Peers[len(m.Peers)-1]
+			m.Peers = m.Peers[:len(m.Peers)-1]
 			break
 		} else {
 			disconnectionNotice := brpc.MessageRPC{
@@ -303,7 +303,7 @@ func (m *Miner) CloseConnection(disconnectingPeer string) error {
 				time.Now(),
 				brpc.DisconnectionType}
 			var reply int
-			m.peers[i].Conn.Call("NodeRPC.DeliverMessage", disconnectionNotice, &reply)
+			m.Peers[i].Conn.Call("NodeRPC.DeliverMessage", disconnectionNotice, &reply)
 		}
 	}
 	return nil
@@ -325,7 +325,7 @@ func (m *Miner) OpenConnection(connectingPort string) error {
 	}
 	log.Printf("Successfully peered with node-%s\n", connectingPort)
 	anchorPeer.Conn = client
-	m.peers = append(m.peers, anchorPeer)
+	m.Peers = append(m.Peers, anchorPeer)
 
 	return nil
 }
