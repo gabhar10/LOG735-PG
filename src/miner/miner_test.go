@@ -421,7 +421,7 @@ func TestMiner_Broadcast(t *testing.T) {
 			m := NewMiner(tt.fields.ID, tt.fields.peers).(*Miner)
 			err := m.Peer()
 			if err != nil {
-				t.Fatalf("Error while peering: %v", err)
+				t.Errorf("Error while peering: %v", err)
 			}
 			if err := m.Broadcast(tt.args.message); (err != nil) != tt.wantErr {
 				t.Errorf("Miner.Broadcast() error = %v, wantErr %v", err, tt.wantErr)
@@ -744,7 +744,7 @@ func TestMiner_BroadcastBlock(t *testing.T) {
 				t.Errorf("Miner.BroadcastBlock() error = %v", err)
 			}
 			if len(m.blocks) != tt.expectedChainSize {
-				t.Fatalf("Block was not accepted!")
+				t.Errorf("Block was not accepted!")
 			}
 		})
 	}
@@ -818,7 +818,7 @@ func TestMiner_clearProcessedMessages(t *testing.T) {
 			}
 			m.clearProcessedMessages(tt.args.block)
 			if len(m.waitingList) > 0 {
-				t.Fatalf("Waiting list should be empty")
+				t.Errorf("Waiting list should be empty")
 			}
 		})
 	}

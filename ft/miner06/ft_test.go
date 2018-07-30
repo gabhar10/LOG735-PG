@@ -60,7 +60,7 @@ func TestMiner06(t *testing.T) {
 		c1 := client.NewClient(Client1ID, clientPeers, nil, nodeChan1).(*client.Client)
 		err = c1.SetupRPC()
 		if err != nil {
-			t.Fatalf("Error while setting up RPC: %v", err)
+			t.Errorf("Error while setting up RPC: %v", err)
 		}
 
 		// Create miner peer
@@ -78,17 +78,17 @@ func TestMiner06(t *testing.T) {
 		mPeer := miner.NewMiner(MinerPeerID, mPeerPeers)
 		err = mPeer.SetupRPC()
 		if err != nil {
-			t.Fatalf("Error while setting up RPC: %v", err)
+			t.Errorf("Error while setting up RPC: %v", err)
 		}
 		err = mPeer.Peer()
 		if err != nil {
-			t.Fatalf("Error while peering: %v", err)
+			t.Errorf("Error while peering: %v", err)
 		}
 
 		// Peer client1 with both miner driver and miner peer
 		err = c1.Peer()
 		if err != nil {
-			t.Fatalf("Error while peering: %v", err)
+			t.Errorf("Error while peering: %v", err)
 		}
 
 		// Create client2
@@ -97,7 +97,7 @@ func TestMiner06(t *testing.T) {
 		c2.SetupRPC()
 		err = c2.Peer()
 		if err != nil {
-			t.Fatalf("Error while peering: %v", err)
+			t.Errorf("Error while peering: %v", err)
 		}
 
 		// Make sure miner is peered!
@@ -114,7 +114,7 @@ func TestMiner06(t *testing.T) {
 
 		err = c1.HandleUiMessage(msg)
 		if err != nil {
-			t.Fatalf("Error while sending message: %v", err)
+			t.Errorf("Error while sending message: %v", err)
 		}
 
 		msg = node.Message{
@@ -125,7 +125,7 @@ func TestMiner06(t *testing.T) {
 
 		err = c2.HandleUiMessage(msg)
 		if err != nil {
-			t.Fatalf("Error while sending message: %v", err)
+			t.Errorf("Error while sending message: %v", err)
 		}
 
 		msg = node.Message{
@@ -136,7 +136,7 @@ func TestMiner06(t *testing.T) {
 
 		err = c1.HandleUiMessage(msg)
 		if err != nil {
-			t.Fatalf("Error while sending message: %v", err)
+			t.Errorf("Error while sending message: %v", err)
 		}
 
 		msg = node.Message{
@@ -147,7 +147,7 @@ func TestMiner06(t *testing.T) {
 
 		err = c2.HandleUiMessage(msg)
 		if err != nil {
-			t.Fatalf("Error while sending message: %v", err)
+			t.Errorf("Error while sending message: %v", err)
 		}
 
 		msg = node.Message{
@@ -158,7 +158,7 @@ func TestMiner06(t *testing.T) {
 
 		err = c2.HandleUiMessage(msg)
 		if err != nil {
-			t.Fatalf("Error while sending message: %v", err)
+			t.Errorf("Error while sending message: %v", err)
 		}
 
 		// Wait 25 seconds for miner to mine its block
@@ -172,7 +172,7 @@ func TestMiner06(t *testing.T) {
 		}
 
 		if !received {
-			t.Fatalf("Never received a block")
+			t.Errorf("Never received a block")
 		}
 
 		c1Blocks := c1.GetBlocks()
@@ -180,27 +180,27 @@ func TestMiner06(t *testing.T) {
 		mPeerBlocks := mPeer.GetBlocks()
 
 		if !reflect.DeepEqual(c1Blocks, c2Blocks) {
-			t.Fatalf("Both clients did not receive the same block")
+			t.Errorf("Both clients did not receive the same block")
 		}
 
 		if !reflect.DeepEqual(c2Blocks, mPeerBlocks) {
-			t.Fatalf("Miner and clients did not receive the same block")
+			t.Errorf("Miner and clients did not receive the same block")
 		}
 
 		if c1Blocks[0].Messages[0].Content != TestContent1 {
-			t.Fatalf("First message is not in right order")
+			t.Errorf("First message is not in right order")
 		}
 		if c1Blocks[0].Messages[1].Content != TestContent3 {
-			t.Fatalf("Second message is not in right order")
+			t.Errorf("Second message is not in right order")
 		}
 		if c1Blocks[0].Messages[2].Content != TestContent2 {
-			t.Fatalf("Third message is not in right order")
+			t.Errorf("Third message is not in right order")
 		}
 		if c1Blocks[0].Messages[3].Content != TestContent4 {
-			t.Fatalf("Fourth message is not in right order")
+			t.Errorf("Fourth message is not in right order")
 		}
 		if c1Blocks[0].Messages[4].Content != TestContent5 {
-			t.Fatalf("Fifth message is not in right order")
+			t.Errorf("Fifth message is not in right order")
 		}
 	})
 }

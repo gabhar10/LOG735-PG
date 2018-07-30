@@ -52,7 +52,7 @@ func TestMiner04(t *testing.T) {
 
 		err = c1.Peer()
 		if err != nil {
-			t.Fatalf("Error while peering: %v", err)
+			t.Errorf("Error while peering: %v", err)
 		}
 
 		// Create client2
@@ -66,7 +66,7 @@ func TestMiner04(t *testing.T) {
 
 		err = c2.Peer()
 		if err != nil {
-			t.Fatalf("Error while peering: %v", err)
+			t.Errorf("Error while peering: %v", err)
 		}
 
 		// Peer miner
@@ -83,7 +83,7 @@ func TestMiner04(t *testing.T) {
 
 		err = c1.HandleUiMessage(msg)
 		if err != nil {
-			t.Fatalf("Error while sending message: %v", err)
+			t.Errorf("Error while sending message: %v", err)
 		}
 
 		msg = node.Message{
@@ -94,7 +94,7 @@ func TestMiner04(t *testing.T) {
 
 		err = c2.HandleUiMessage(msg)
 		if err != nil {
-			t.Fatalf("Error while sending message: %v", err)
+			t.Errorf("Error while sending message: %v", err)
 		}
 
 		msg = node.Message{
@@ -105,7 +105,7 @@ func TestMiner04(t *testing.T) {
 
 		err = c1.HandleUiMessage(msg)
 		if err != nil {
-			t.Fatalf("Error while sending message: %v", err)
+			t.Errorf("Error while sending message: %v", err)
 		}
 
 		msg = node.Message{
@@ -116,11 +116,11 @@ func TestMiner04(t *testing.T) {
 
 		err = c2.HandleUiMessage(msg)
 		if err != nil {
-			t.Fatalf("Error while sending message: %v", err)
+			t.Errorf("Error while sending message: %v", err)
 		}
 
 		if len(m.IncomingMsgChan) != 4 {
-			t.Fatalf("Message queue of miner should be 4")
+			t.Errorf("Message queue of miner should be 4")
 		}
 
 		msg = <-m.IncomingMsgChan
@@ -129,7 +129,7 @@ func TestMiner04(t *testing.T) {
 			t.Errorf("Error while parsing time: %v", err)
 		}
 		if msg.Content != TestContent1 || timestamp.After(time.Now()) {
-			t.Fatalf("Miner received wrong message")
+			t.Errorf("Miner received wrong message")
 		}
 
 		msg = <-m.IncomingMsgChan
@@ -138,7 +138,7 @@ func TestMiner04(t *testing.T) {
 			t.Errorf("Error while parsing time: %v", err)
 		}
 		if msg.Content != TestContent3 || timestamp.After(time.Now()) {
-			t.Fatalf("Miner received wrong message")
+			t.Errorf("Miner received wrong message")
 		}
 
 		msg = <-m.IncomingMsgChan
@@ -147,7 +147,7 @@ func TestMiner04(t *testing.T) {
 			t.Errorf("Error while parsing time: %v", err)
 		}
 		if msg.Content != TestContent2 || timestamp.After(time.Now()) {
-			t.Fatalf("Miner received wrong message")
+			t.Errorf("Miner received wrong message")
 		}
 
 		msg = <-m.IncomingMsgChan
@@ -156,7 +156,7 @@ func TestMiner04(t *testing.T) {
 			t.Errorf("Error while parsing time: %v", err)
 		}
 		if msg.Content != TestContent4 || timestamp.After(time.Now()) {
-			t.Fatalf("Miner received wrong message")
+			t.Errorf("Miner received wrong message")
 		}
 	})
 }
