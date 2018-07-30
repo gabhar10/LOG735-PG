@@ -49,6 +49,7 @@ func (m *Miner) Start() {
 		m.blocks = append(m.blocks, block)
 		//MINEUR-06
 		m.BroadcastBlock(m.blocks)
+		m.clearProcessedMessages(&block)
 	}()
 }
 
@@ -166,17 +167,15 @@ func (m *Miner) CreateBlock() node.Block {
 
 func (m *Miner) ReceiveMessage(content string, temps time.Time, peer string) {
 	//MINEUR-04
-	found := false
+	// Check if we don't alrady have the message in the waiting list
 	for _, m := range m.waitingList {
 		if reflect.DeepEqual(m, node.Message{peer, content, temps}) {
-			found = true
-			break
+			return
 		}
 	}
+
 	message := node.Message{peer, content, temps}
-	if !found {
-		m.Broadcast(message)
-	}
+	m.Broadcast(message)
 	m.IncomingMsgChan <- message
 }
 
@@ -201,16 +200,6 @@ func (m *Miner) mining() node.Block {
 		hashedHeader, _ := m.findingNounce(&block)
 		log.Println("Nounce : ", block.Header.Nounce)
 		block.Header.Hash = hashedHeader
-
-		//supprimer les messages de la waitingList
-		for _, message := range block.Messages {
-			for j, unprocMessage := range m.waitingList {
-				if reflect.DeepEqual(unprocMessage, message) {
-					m.waitingList = append(m.waitingList[:j], m.waitingList[j+1:]...)
-					break
-				}
-			}
-		}
 
 		return block
 	}
@@ -238,4 +227,16 @@ findingNounce:
 		}
 	}
 	return hashedHeader, nil
+}
+
+func (m *Miner) clearProcessedMessages(block *node.Block) {
+	//supprimer les messages de la waitingList
+	for _, message := range block.Messages {
+		for j, unprocMessage := range m.waitingList {
+			if reflect.DeepEqual(unprocMessage, message) {
+				m.waitingList = append(m.waitingList[:j], m.waitingList[j+1:]...)
+				break
+			}
+		}
+	}
 }
