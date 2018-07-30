@@ -32,6 +32,11 @@ type (
 		Blocks []node.Block
 	}
 
+	BlockRPC struct {
+		ConnectionRPC
+		Block node.Block
+	}
+
 	GetBlocksRPC struct {
 		FirstBlock hash.Hash
 		LastBlock  hash.Hash

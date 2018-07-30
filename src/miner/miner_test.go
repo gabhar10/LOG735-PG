@@ -202,7 +202,7 @@ func TestNewMiner(t *testing.T) {
 				if miner.ID != tt.args.port || len(miner.Peers) != 1 || miner.Peers[0] != tt.args.peers[0] {
 					t.Errorf("NewMiner() did not populate with port %s and peers %v", tt.args.port, tt.args.peers)
 				}
-				if cap(miner.blocks) != node.MinBlocksReturnSize || cap(miner.IncomingMsgChan) != node.MessagesChannelSize || cap(miner.incomingBlockChan) != node.BlocksChannelSize {
+				if cap(miner.IncomingMsgChan) != node.MessagesChannelSize || cap(miner.incomingBlockChan) != node.BlocksChannelSize {
 					t.Errorf("NewMiner() did not return a miner with attributes of proper length")
 				}
 			} else {
@@ -479,9 +479,45 @@ func TestMiner_ReceiveMessage(t *testing.T) {
 }
 
 func TestMiner_ReceiveBlock(t *testing.T) {
+	var m *Miner
+	func() {
+		driver := node.Peer{Host: "127.0.0.1", Port: "9001"}
+		m = NewMiner("9002", []*node.Peer{&driver}).(*Miner)
+
+		bloc := node.Block{}
+		messages := [node.BlockSize]node.Message{}
+		for i := 0; i < node.BlockSize; i++ {
+			messages[i] = node.Message{Content: "Salut!"}
+		}
+		bloc.Messages = messages
+		hashedHeader, _ := m.findingNounce(&bloc)
+		bloc.Header.Hash = hashedHeader
+		tempBlock := append(m.blocks, bloc)
+		m.blocks = tempBlock
+
+		bloc = node.Block{}
+		messages = [node.BlockSize]node.Message{}
+		for i := 0; i < node.BlockSize; i++ {
+			messages[i] = node.Message{Content: "Bonjour!"}
+		}
+		bloc.Messages = messages
+		bloc.Header.PreviousBlock = hashedHeader
+		hashedHeader, _ = m.findingNounce(&bloc)
+		bloc.Header.Hash = hashedHeader
+		tempBlock2 := append(m.blocks, bloc)
+		m.blocks = tempBlock2
+
+		m.Start()
+		for i := 0; i < node.BlockSize; i++ {
+			m.IncomingMsgChan <- node.Message{Content: "En train de miner!"}
+		}
+		//time.Sleep(100 * time.Millisecond)
+
+	}()
 	type fields struct {
 		ID                string
 		blocks            []node.Block
+		miningBlock       node.Block
 		peers             []*node.Peer
 		rpcHandler        *brpc.NodeRPC
 		IncomingMsgChan   chan node.Message
@@ -500,8 +536,18 @@ func TestMiner_ReceiveBlock(t *testing.T) {
 		{
 			name: "Sunny day",
 			fields: fields{
-				quit:  make(chan bool, 1),
-				mutex: new(sync.Mutex),
+				ID:                m.ID,
+				blocks:            m.blocks,
+				miningBlock:       m.miningBlock,
+				peers:             m.Peers,
+				rpcHandler:        m.rpcHandler,
+				IncomingMsgChan:   m.IncomingMsgChan,
+				incomingBlockChan: m.incomingBlockChan,
+				quit:              m.quit,
+				mutex:             m.mutex,
+			},
+			args: args{
+				block: m.blocks[1],
 			},
 		},
 	}
@@ -623,7 +669,7 @@ func TestMiner_BroadcastBlock(t *testing.T) {
 		waitingList       []node.Message
 	}
 	type args struct {
-		in0 []node.Block
+		in0 node.Block
 	}
 	tests := []struct {
 		name    string
@@ -648,11 +694,9 @@ func TestMiner_BroadcastBlock(t *testing.T) {
 				mutex: new(sync.Mutex),
 			},
 			args: args{
-				in0: []node.Block{
-					node.Block{
-						Header:   node.Header{},
-						Messages: [node.BlockSize]node.Message{},
-					},
+				in0: node.Block{
+					Header:   node.Header{},
+					Messages: [node.BlockSize]node.Message{},
 				},
 			},
 		},

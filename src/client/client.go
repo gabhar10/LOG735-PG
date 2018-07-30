@@ -67,9 +67,6 @@ func (c *Client) Peer() error {
 		if err != nil {
 			return err
 		}
-		if len(reply.Blocks) < node.MinBlocksReturnSize {
-			return fmt.Errorf("Returned size of blocks is below %d", node.MinBlocksReturnSize)
-		}
 		peer.Conn = client
 		log.Printf("Successfully peered with node-%s\n", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
 	}
