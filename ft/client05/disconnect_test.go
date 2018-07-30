@@ -11,6 +11,7 @@ func TestClient05_disconnect(t *testing.T) {
 	const MinerID = "9888"
 	const ClientID = "9889"
 	const Localhost = "localhost"
+// CLIENT-05: L’application client doit permettre à l’utilisateur de se déconnecter
 
 	t.Run("Client disconnect from miner", func(t *testing.T) {
 		// Create miner
@@ -20,7 +21,10 @@ func TestClient05_disconnect(t *testing.T) {
 				Port: ClientID},
 		}
 		m := miner.NewMiner(MinerID, minerPeers).(*miner.Miner)
-		m.SetupRPC()
+		err := m.SetupRPC()
+		if err != nil {
+			t.Errorf("Error while trying to setup RPC: %v", err)
+		}
 		// Create client
 		clientPeers := []*node.Peer{
 			&node.Peer{
@@ -29,32 +33,33 @@ func TestClient05_disconnect(t *testing.T) {
 		}
 		// Channel for communication
 		nodeChan := make(chan node.Message, 1)
+
 		c := client.NewClient(Localhost, ClientID, clientPeers, nil, nodeChan).(*client.Client)
-		err := c.Peer()
+
 		if err != nil {
-			t.Fatalf("Error while peering: %v", err)
+			t.Errorf("Error while peering: %v", err)
 		}
 
 		if len(m.Peers) == 0 {
-			t.Fatalf("Miner's peers slice is empty")
+			t.Errorf("Miner's peers slice is empty")
 		}
 
 		if len(c.Peers) == 0 {
-			t.Fatalf("Miner's peers slice is empty")
+			t.Errorf("Miner's peers slice is empty")
 		}
 
 		err = c.Disconnect()
 
 		if err != nil {
-			t.Fatalf("Error returned while disconnecting: %v", err)
+			t.Errorf("Error returned while disconnecting: %v", err)
 		}
 
 		if len(m.Peers) > 0 {
-			t.Fatalf("Miner still has the connection of the peer")
+			t.Errorf("Miner still has the connection of the peer")
 		}
 
 		if len(c.Peers) > 0 {
-			t.Fatal("Client still has the connection of the peer")
+			t.Errorf("Client still has the connection of the peer")
 		}
 	})
 }
