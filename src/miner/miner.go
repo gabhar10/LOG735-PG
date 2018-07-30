@@ -18,7 +18,7 @@ import (
 type Miner struct {
 	ID                string            // i.e. Run-time port associated to container
 	blocks            []node.Block      // MINEUR-07
-	peers             []*node.Peer      // Slice of peers
+	Peers             []*node.Peer      // Slice of peers
 	rpcHandler        *brpc.NodeRPC     // Handler for RPC requests
 	IncomingMsgChan   chan node.Message // Channel for incoming messages from other clients
 	incomingBlockChan chan node.Block   // Channel for incoming blocks from other miners
@@ -166,6 +166,7 @@ func (m *Miner) CreateBlock() node.Block {
 
 func (m *Miner) ReceiveMessage(content string, temps time.Time, peer string, messageType int) {
 	//MINEUR-04
+
 	found := false
 	for _, m := range m.waitingList {
 		if reflect.DeepEqual(m, node.Message{peer, content, temps}) {

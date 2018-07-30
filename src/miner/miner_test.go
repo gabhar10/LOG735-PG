@@ -81,7 +81,7 @@ func TestMiner_findingNounce(t *testing.T) {
 			m := &Miner{
 				ID:                tt.fields.ID,
 				blocks:            tt.fields.blocks,
-				peers:             tt.fields.peers,
+				Peers:             tt.fields.peers,
 				rpcHandler:        tt.fields.rpcHandler,
 				IncomingMsgChan:   tt.fields.IncomingMsgChan,
 				incomingBlockChan: tt.fields.incomingBlockChan,
@@ -157,7 +157,7 @@ func TestMiner_CreateBlock(t *testing.T) {
 			m := &Miner{
 				ID:                tt.fields.ID,
 				blocks:            tt.fields.blocks,
-				peers:             tt.fields.peers,
+				Peers:             tt.fields.peers,
 				rpcHandler:        tt.fields.rpcHandler,
 				IncomingMsgChan:   tt.fields.IncomingMsgChan,
 				incomingBlockChan: tt.fields.incomingBlockChan,
@@ -239,7 +239,7 @@ func TestMiner_Start(t *testing.T) {
 			m := &Miner{
 				ID:                tt.fields.ID,
 				blocks:            tt.fields.blocks,
-				peers:             tt.fields.peers,
+				Peers:             tt.fields.peers,
 				rpcHandler:        tt.fields.rpcHandler,
 				IncomingMsgChan:   tt.fields.IncomingMsgChan,
 				incomingBlockChan: tt.fields.incomingBlockChan,
@@ -510,7 +510,7 @@ func TestMiner_ReceiveBlock(t *testing.T) {
 			m := Miner{
 				ID:                tt.fields.ID,
 				blocks:            tt.fields.blocks,
-				peers:             tt.fields.peers,
+				Peers:             tt.fields.peers,
 				rpcHandler:        tt.fields.rpcHandler,
 				IncomingMsgChan:   tt.fields.IncomingMsgChan,
 				incomingBlockChan: tt.fields.incomingBlockChan,
@@ -582,7 +582,7 @@ func TestMiner_mining(t *testing.T) {
 			m := &Miner{
 				ID:                tt.fields.ID,
 				blocks:            tt.fields.blocks,
-				peers:             tt.fields.peers,
+				Peers:             tt.fields.peers,
 				rpcHandler:        tt.fields.rpcHandler,
 				IncomingMsgChan:   tt.fields.IncomingMsgChan,
 				incomingBlockChan: tt.fields.incomingBlockChan,
