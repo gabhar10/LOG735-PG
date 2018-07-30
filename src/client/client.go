@@ -27,6 +27,9 @@ type (
 )
 
 func NewClient(port string, peers []*node.Peer, uiChannel chan node.Message, nodeChannel chan node.Message) node.Node {
+	log.Println("Client::Entering NewClient()")
+	defer log.Println("Client::Leaving NewClient()")
+
 	c := &Client{
 		port,
 		[]node.Block{},
@@ -42,12 +45,15 @@ func NewClient(port string, peers []*node.Peer, uiChannel chan node.Message, nod
 }
 
 func (c *Client) Start() {
+	log.Printf("Client-%s::Entering Start()", c.ID)
+	defer log.Printf("Client-%s::Leaving Start()", c.ID)
+
 	go c.StartMessageLoop()
 }
 
 func (c *Client) SetupRPC() error {
-	log.Println("Entering SetupRPC()")
-	defer log.Println("Leaving SetupRPC()")
+	log.Printf("Client-%s::Entering SetupRPC()", c.ID)
+	defer log.Printf("Client-%s::Leaving SetupRPC()", c.ID)
 
 	s := rpc.NewServer()
 	s.Register(c.rpcHandler)
@@ -61,6 +67,9 @@ func (c *Client) SetupRPC() error {
 }
 
 func (c *Client) Peer() error {
+	log.Printf("Client-%s::Entering Peer()", c.ID)
+	defer log.Printf("Client-%s::Leaving Peer()", c.ID)
+
 	for _, peer := range c.Peers {
 		client, err := brpc.ConnectTo(*peer)
 		if err != nil {
@@ -80,6 +89,9 @@ func (c *Client) Peer() error {
 }
 
 func (c *Client) GetBlocks() []node.Block {
+	log.Printf("Client-%s::Entering GetBlocks()", c.ID)
+	defer log.Printf("Client-%s::Leaving GetBlocks()", c.ID)
+
 	return c.blocks
 }
 
@@ -88,6 +100,8 @@ func (c *Client) GetBlocks() []node.Block {
 
 // Connect node to Anchor Miner
 func (c *Client) Connect(anchorPort string) error {
+	log.Printf("Client-%s::Entering Connect()", c.ID)
+	defer log.Printf("Client-%s::Leaving Connect()", c.ID)
 
 	anchorPeer := &node.Peer{
 		Host: fmt.Sprintf("node-%s", anchorPort),
@@ -122,8 +136,9 @@ func (c *Client) Connect(anchorPort string) error {
 
 // Ask all node to close connection and erase current connection slice
 func (c *Client) Disconnect() error {
+	log.Printf("Client-%s::Entering Disconnect()", c.ID)
+	defer log.Printf("Client-%s::Leaving Disconnect()", c.ID)
 
-	log.Printf("Disconnecting from network")
 	for _, conn := range c.Peers {
 		var reply int
 		err := conn.Conn.Call("NodeRPC.Disconnect", &c.ID, &reply)
@@ -142,11 +157,17 @@ func (c *Client) Disconnect() error {
 
 // Ignore all request for bidirectionnal connection
 func (c *Client) OpenConnection(connectingPort string) error {
+	log.Printf("Client-%s::Entering OpenConnection()", c.ID)
+	defer log.Printf("Client-%s::Leaving OpenConnection()", c.ID)
+
 	return nil
 }
 
 // Close connection of requesting peer
 func (c *Client) CloseConnection(disconnectingPeer string) error {
+	log.Printf("Client-%s::Entering CloseConnection()", c.ID)
+	defer log.Printf("Client-%s::Leaving CloseConnection()", c.ID)
+
 	for i := 0; i < len(c.Peers); i++ {
 		if c.Peers[i].Port == disconnectingPeer {
 			c.Peers[i].Conn.Close()
@@ -158,13 +179,20 @@ func (c *Client) CloseConnection(disconnectingPeer string) error {
 	return nil
 }
 
-func (c *Client) ReceiveMessage(content string, temps time.Time, peer string, messageType int) {
+func (c *Client) ReceiveMessage(content, temps, peer string, messageType int) error {
+	log.Printf("Client-%s::Entering ReceiveMessage()", c.ID)
+	defer log.Printf("Client-%s::Leaving ReceiveMessage()", c.ID)
+
 	if c.uiChannel != nil {
 		c.uiChannel <- node.Message{peer, content, temps}
 	}
+	return nil
 }
 
 func (c *Client) HandleUiMessage(msg node.Message) error {
+	log.Printf("Client-%s::Entering HandleUiMessage()", c.ID)
+	defer log.Printf("Client-%s::Leaving HandleUiMessage()", c.ID)
+
 	for _, conn := range c.Peers {
 		var reply int
 		message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, msg.Content, msg.Time, brpc.MessageType}
@@ -177,6 +205,9 @@ func (c *Client) HandleUiMessage(msg node.Message) error {
 }
 
 func (c *Client) StartMessageLoop() error {
+	log.Printf("Client-%s::Entering StartMessageLoop()", c.ID)
+	defer log.Printf("Client-%s::Leaving StartMessageLoop()", c.ID)
+
 	c.msgLoopRunning = true
 	for {
 		select {
@@ -186,11 +217,11 @@ func (c *Client) StartMessageLoop() error {
 			time.Sleep(5 * time.Second)
 			for _, peer := range c.Peers {
 				var reply int
-				message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, "Bonjour", time.Now(), brpc.MessageType}
+				message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, "Bonjour", time.Now().Format(time.RFC3339Nano), brpc.MessageType}
 				peer.Conn.Call("NodeRPC.DeliverMessage", message, &reply)
 			}
 			if c.nodeChannel != nil {
-				c.uiChannel <- node.Message{c.ID, "Bonjour", time.Now()}
+				c.uiChannel <- node.Message{c.ID, "Bonjour", time.Now().Format(time.RFC3339Nano)}
 			}
 		}
 
@@ -200,8 +231,8 @@ func (c *Client) StartMessageLoop() error {
 }
 
 func (c *Client) BroadcastBlock(b node.Block) error {
-	log.Println("Entering BroadcastBlock()")
-	defer log.Println("Leaving BroadcastBlock()")
+	log.Printf("Client-%s::Entering BroadcastBlock()", c.ID)
+	defer log.Printf("Client-%s::Leaving BroadcastBlock()", c.ID)
 
 	if len(c.Peers) == 0 {
 		log.Println("No peers are defined. Exiting.")
@@ -226,8 +257,8 @@ func (c *Client) BroadcastBlock(b node.Block) error {
 }
 
 func (c *Client) ReceiveBlock(block node.Block) error {
-	log.Println("Client::Entering ReceiveBlock()")
-	defer log.Println("Client::Leaving ReceiveBlock()")
+	log.Printf("Client-%s::Entering ReceiveBlock()", c.ID)
+	defer log.Printf("Client-%s::Leaving ReceiveBlock()", c.ID)
 
 	log.Printf("Block header hash: %v, Block header nounce: %v, Block header date: %v", block.Header.Hash, block.Header.Nounce, block.Header.Date)
 	// Do we already have this block in the chain?
@@ -261,9 +292,15 @@ func (c *Client) ReceiveBlock(block node.Block) error {
 		}
 		header.Hash = [sha256.Size]byte{}
 		hash := sha256.Sum256([]byte(fmt.Sprintf("%v", header)))
+
+		if block.Header.Hash != hash {
+			log.Printf("Error while validating hash! (%v != %v)", hash, block.Header.Hash)
+			return fmt.Errorf("Error while validating hash! (%v != %v)", hash, block.Header.Hash)
+		}
+
 		firstCharacters := string(hash[:node.MiningDifficulty])
 		if strings.Count(firstCharacters, "0") == node.MiningDifficulty && hash == block.Header.Hash {
-			log.Println("Received block's hash is valid!")
+			log.Println("Check if blocks are identical")
 		} else {
 			log.Printf("Received block's hash is not valid! Discarding block (%v != %v)", block.Header.Hash, hash)
 			return nil
@@ -276,6 +313,11 @@ func (c *Client) ReceiveBlock(block node.Block) error {
 	}
 
 	//TODO: add timestamp gap checking between messages
+
+	log.Println("Appending block to the chain")
+	// TODO: Use mutex?
+	tempBlocks := append(c.blocks, block)
+	c.blocks = tempBlocks
 
 	return c.BroadcastBlock(block)
 }

@@ -21,7 +21,7 @@ type (
 	MessageRPC struct {
 		ConnectionRPC
 		Message     string
-		Time        time.Time
+		Time        string
 		MessageType int // Indicates if message is chat message [0],
 		// Disconnection of a peer [1] or
 		// Connection of peer [2]

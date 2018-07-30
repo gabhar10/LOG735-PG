@@ -2,14 +2,13 @@ package node
 
 import (
 	"crypto/sha256"
-	"time"
 )
 
 type Header struct {
 	PreviousBlock [sha256.Size]byte
 	Hash          [sha256.Size]byte
 	Nounce        uint64
-	Date          time.Time
+	Date          string
 }
 
 type Block struct {
@@ -20,5 +19,5 @@ type Block struct {
 type Message struct {
 	Peer    string
 	Content string
-	Time    time.Time
+	Time    string
 }

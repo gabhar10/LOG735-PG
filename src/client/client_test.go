@@ -83,7 +83,7 @@ func TestClient_ReceiveBlock(t *testing.T) {
 						messages[i] = node.Message{
 							Peer:    "9000",
 							Content: "Salut!",
-							Time:    time.Now(),
+							Time:    time.Now().Format(time.RFC3339),
 						}
 					}
 

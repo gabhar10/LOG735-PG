@@ -28,8 +28,8 @@ type Miner struct {
 }
 
 func NewMiner(port string, peers []*node.Peer) node.Node {
-	log.Println("Entering NewMiner()")
-	defer log.Println("Leaving NewMiner()")
+	log.Println("Miner::Entering NewMiner()")
+	defer log.Println("Miner::Leaving NewMiner()")
 
 	m := &Miner{
 		port,
@@ -48,8 +48,8 @@ func NewMiner(port string, peers []*node.Peer) node.Node {
 }
 
 func (m *Miner) Start() {
-	log.Println("Entering Start()")
-	defer log.Println("Leaving Start()")
+	log.Printf("Miner-%s::Entering Start()", m.ID)
+	defer log.Printf("Miner-%s::Leaving Start()", m.ID)
 
 	go func() {
 		block := m.mining()
@@ -69,8 +69,8 @@ func (m *Miner) Start() {
 }
 
 func (m *Miner) Connect(anchorPort string) error {
-	log.Println("Entering Connect()")
-	defer log.Println("Leaving Connect()")
+	log.Printf("Miner-%s::Entering Connect()", m.ID)
+	defer log.Printf("Miner-%s::Leaving Connect()", m.ID)
 
 	return nil
 }
@@ -78,8 +78,8 @@ func (m *Miner) Connect(anchorPort string) error {
 // MINEUR-12
 
 func (m *Miner) SetupRPC() error {
-	log.Println("Entering SetupRPC()")
-	defer log.Println("Leaving SetupRPC()")
+	log.Printf("Miner-%s::Entering SetupRPC()", m.ID)
+	defer log.Printf("Miner-%s::Leaving SetupRPC()", m.ID)
 
 	s := rpc.NewServer()
 	s.Register(m.rpcHandler)
@@ -93,8 +93,8 @@ func (m *Miner) SetupRPC() error {
 }
 
 func (m *Miner) Peer() error {
-	log.Println("Entering Peer()")
-	defer log.Println("Leaving Peer()")
+	log.Printf("Miner-%s::Entering Peer()", m.ID)
+	defer log.Printf("Miner-%s::Leaving Peer()", m.ID)
 
 	for _, peer := range m.Peers {
 		client, err := brpc.ConnectTo(*peer)
@@ -116,8 +116,8 @@ func (m *Miner) Peer() error {
 }
 
 func (m *Miner) BroadcastBlock(b node.Block) error {
-	log.Println("Entering BroadcastBlock()")
-	defer log.Println("Leaving BroadcastBlock()")
+	log.Printf("Miner-%s::Entering BroadcastBlock()", m.ID)
+	defer log.Printf("Miner-%s::Leaving BroadcastBlock()", m.ID)
 
 	if len(m.Peers) == 0 {
 		log.Println("No peers are defined. Exiting.")
@@ -142,20 +142,21 @@ func (m *Miner) BroadcastBlock(b node.Block) error {
 }
 
 func (m *Miner) GetBlocks() []node.Block {
-	log.Println("Entering GetBlocks()")
-	defer log.Println("Leaving GetBlocks()")
+	log.Printf("Miner-%s::Entering GetBlocks()", m.ID)
+	defer log.Printf("Miner-%s::Leaving GetBlocks()", m.ID)
 
 	return m.blocks
 }
 
 func (m *Miner) Broadcast(message node.Message) error {
-	log.Println("Entering Broadcast()")
-	defer log.Println("Leaving Broadcast()")
+	log.Printf("Miner-%s::Entering Broadcast()", m.ID)
+	defer log.Printf("Miner-%s::Leaving Broadcast()", m.ID)
 	// DeliverMessage (RPC) to peers
 	// To implement
 
 	if len(m.Peers) == 0 {
-		return fmt.Errorf("No peers are defined")
+		log.Println("No peers are defined. Exiting.")
+		return nil
 	}
 
 	for _, peer := range m.Peers {
@@ -163,7 +164,7 @@ func (m *Miner) Broadcast(message node.Message) error {
 			return fmt.Errorf("RPC connection handler of peer %s is nil", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
 		}
 		args := brpc.MessageRPC{
-			ConnectionRPC: brpc.ConnectionRPC{PeerID: peer.Port},
+			ConnectionRPC: brpc.ConnectionRPC{PeerID: message.Peer},
 			Message:       message.Content,
 			Time:          message.Time}
 		var reply *int
@@ -176,8 +177,8 @@ func (m *Miner) Broadcast(message node.Message) error {
 }
 
 func (m *Miner) CreateBlock() node.Block {
-	log.Println("Entering CreateBlock()")
-	defer log.Println("Leaving CreateBlock()")
+	log.Printf("Miner-%s::Entering CreateBlock()", m.ID)
+	defer log.Printf("Miner-%s::Leaving CreateBlock()", m.ID)
 	// MINEUR-10
 	// MINEUR-14
 	// To implement
@@ -187,7 +188,7 @@ func (m *Miner) CreateBlock() node.Block {
 		lastBlockHash = m.blocks[len(m.blocks)-1].Header.Hash
 	}
 
-	header := node.Header{PreviousBlock: lastBlockHash, Date: time.Now()}
+	header := node.Header{PreviousBlock: lastBlockHash, Date: time.Now().Format(time.RFC3339)}
 	var messages [node.BlockSize]node.Message
 
 	for i := 0; i < node.BlockSize; i++ {
@@ -198,9 +199,9 @@ func (m *Miner) CreateBlock() node.Block {
 	return node.Block{Header: header, Messages: messages}
 }
 
-func (m *Miner) ReceiveMessage(content string, temps time.Time, peer string, messageType int) {
-	log.Println("Entering ReceiveMessage()")
-	defer log.Println("Leaving ReceiveMessage()")
+func (m *Miner) ReceiveMessage(content, temps, peer string, messageType int) error {
+	log.Printf("Miner-%s::Entering ReceiveMessage()", m.ID)
+	defer log.Printf("Miner-%s::Leaving ReceiveMessage()", m.ID)
 
 	//MINEUR-04
 
@@ -212,7 +213,8 @@ func (m *Miner) ReceiveMessage(content string, temps time.Time, peer string, mes
 	}
 	for _, m := range m.waitingList {
 		if reflect.DeepEqual(m, msg) {
-			return
+			log.Printf("Message \"%s\" from peer \"%s\" is already in waiting list", content, peer)
+			return nil
 		}
 	}
 	log.Printf("Appending message \"%s\" from peer \"%s\" in waiting list", msg.Content, msg.Peer)
@@ -222,13 +224,18 @@ func (m *Miner) ReceiveMessage(content string, temps time.Time, peer string, mes
 	m.mutex.Unlock()
 	log.Println("Unlocking mutex")
 
-	m.Broadcast(msg)
+	err := m.Broadcast(msg)
+	if err != nil {
+		log.Printf("Error while broadcasting to peer: %v", err)
+		return err
+	}
 	m.IncomingMsgChan <- msg
+	return nil
 }
 
 func (m *Miner) ReceiveBlock(block node.Block) error {
-	log.Println("Miner::Entering ReceiveBlock()")
-	defer log.Println("Miner::Leaving ReceiveBlock()")
+	log.Printf("Miner-%s::Entering ReceiveBlock()", m.ID)
+	defer log.Printf("Miner-%s::Leaving ReceiveBlock()", m.ID)
 
 	// Do we already have this block in the chain?
 	for _, b := range m.blocks {
@@ -261,6 +268,12 @@ func (m *Miner) ReceiveBlock(block node.Block) error {
 		}
 		header.Hash = [sha256.Size]byte{}
 		hash := sha256.Sum256([]byte(fmt.Sprintf("%v", header)))
+
+		if block.Header.Hash != hash {
+			log.Printf("Error while validating hash! (%v != %v)", hash, block.Header.Hash)
+			return fmt.Errorf("Error while validating hash! (%v != %v)", hash, block.Header.Hash)
+		}
+
 		firstCharacters := string(hash[:node.MiningDifficulty])
 		if strings.Count(firstCharacters, "0") == node.MiningDifficulty && hash == block.Header.Hash {
 			log.Println("Received block's hash is valid! Stopping current mining operation.")
@@ -289,14 +302,19 @@ func (m *Miner) ReceiveBlock(block node.Block) error {
 		return err
 	}
 
-	m.Start()
+	log.Println("Appending block to the chain")
+	// TODO: Use mutex?
+	tempBlocks := append(m.blocks, block)
+	m.blocks = tempBlocks
+
+	//m.Start()
 
 	return nil
 }
 
 func (m *Miner) mining() node.Block {
-	log.Println("Entering mining()")
-	defer log.Println("Leaving mining()")
+	log.Printf("Miner-%s::Entering mining()", m.ID)
+	defer log.Printf("Miner-%s::Leaving mining()", m.ID)
 
 	select {
 	case <-m.quit:
@@ -317,8 +335,8 @@ func (m *Miner) mining() node.Block {
 }
 
 func (m *Miner) findingNounce(block *node.Block) ([sha256.Size]byte, error) {
-	log.Println("Entering findingNounce()")
-	defer log.Println("Leaving findingNounce()")
+	log.Printf("Miner-%s::Entering findingNounce()", m.ID)
+	defer log.Printf("Miner-%s::Leaving findingNounce()", m.ID)
 
 	var firstCharacters string
 	var hashedHeader [sha256.Size]byte
@@ -344,16 +362,16 @@ findingNounce:
 }
 
 func (m Miner) Disconnect() error {
-	log.Println("Entering Disconnect()")
-	defer log.Println("Leaving Disconnect()")
+	log.Printf("Miner-%s::Entering Disconnect()", m.ID)
+	defer log.Printf("Miner-%s::Leaving Disconnect()", m.ID)
 
 	return nil
 }
 
 // Close connection of requesting peer
 func (m *Miner) CloseConnection(disconnectingPeer string) error {
-	log.Println("Entering CloseConnection()")
-	defer log.Println("Leaving CloseConnection()")
+	log.Printf("Miner-%s::Entering CloseConnection()", m.ID)
+	defer log.Printf("Miner-%s::Leaving CloseConnection()", m.ID)
 
 	for i := 0; i < len(m.Peers); i++ {
 		if m.Peers[i].Port == disconnectingPeer {
@@ -367,7 +385,7 @@ func (m *Miner) CloseConnection(disconnectingPeer string) error {
 			disconnectionNotice := brpc.MessageRPC{
 				brpc.ConnectionRPC{m.ID},
 				disconnectingPeer,
-				time.Now(),
+				time.Now().Format(time.RFC3339),
 				brpc.DisconnectionType}
 			var reply int
 			if m.Peers[i].Conn == nil {
@@ -381,8 +399,8 @@ func (m *Miner) CloseConnection(disconnectingPeer string) error {
 
 // Open connection to requesting peer (Usually for 2-way communication
 func (m *Miner) OpenConnection(connectingPort string) error {
-	log.Println("Entering OpenConnection()")
-	defer log.Println("Leaving OpenConnection()")
+	log.Printf("Miner-%s::Entering OpenConnection()", m.ID)
+	defer log.Printf("Miner-%s::Leaving OpenConnection()", m.ID)
 
 	anchorPeer := &node.Peer{
 		Host: fmt.Sprintf("node-%s", connectingPort),
@@ -401,6 +419,9 @@ func (m *Miner) OpenConnection(connectingPort string) error {
 }
 
 func (m *Miner) clearProcessedMessages(block *node.Block) {
+	log.Printf("Miner-%s::Entering clearProcessedMessages()", m.ID)
+	defer log.Printf("Miner-%s::Leaving clearProcessedMessages()", m.ID)
+
 	//supprimer les messages de la waitingList
 	for _, message := range block.Messages {
 		for j, unprocMessage := range m.waitingList {

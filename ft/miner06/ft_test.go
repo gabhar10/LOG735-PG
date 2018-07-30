@@ -9,10 +9,12 @@ import (
 	"time"
 )
 
+// MINEUR-06: Après avoir découvert une solution valide à la création d’un bloc, un mineur doit diffuser ce bloc à ses voisins.
 func TestMiner06(t *testing.T) {
 	const MinerID = "8889"
 	const Client1ID = "8888"
 	const Client2ID = "8887"
+	const MinerPeerID = "8886"
 	const TestContent1 = "This is a test from Client1"
 	const TestContent2 = "This is a another test from Client1"
 	const TestContent3 = "This is a test from Client2"
@@ -30,6 +32,10 @@ func TestMiner06(t *testing.T) {
 				Host: "127.0.0.1",
 				Port: Client2ID,
 			},
+			&node.Peer{
+				Host: "127.0.0.1",
+				Port: MinerPeerID,
+			},
 		}
 		m := miner.NewMiner(MinerID, minerPeers).(*miner.Miner)
 		err := m.SetupRPC()
@@ -41,7 +47,12 @@ func TestMiner06(t *testing.T) {
 		clientPeers := []*node.Peer{
 			&node.Peer{
 				Host: "127.0.0.1",
-				Port: MinerID},
+				Port: MinerID,
+			},
+			&node.Peer{
+				Host: "127.0.0.1",
+				Port: MinerPeerID,
+			},
 		}
 
 		// Create client1
@@ -51,6 +62,30 @@ func TestMiner06(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Error while setting up RPC: %v", err)
 		}
+
+		// Create miner peer
+		mPeerPeers := []*node.Peer{
+			&node.Peer{
+				Host: "127.0.0.1",
+				Port: MinerID,
+			},
+			&node.Peer{
+				Host: "127.0.0.1",
+				Port: Client1ID,
+			},
+		}
+
+		mPeer := miner.NewMiner(MinerPeerID, mPeerPeers)
+		err = mPeer.SetupRPC()
+		if err != nil {
+			t.Fatalf("Error while setting up RPC: %v", err)
+		}
+		err = mPeer.Peer()
+		if err != nil {
+			t.Fatalf("Error while peering: %v", err)
+		}
+
+		// Peer client1 with both miner driver and miner peer
 		err = c1.Peer()
 		if err != nil {
 			t.Fatalf("Error while peering: %v", err)
@@ -74,7 +109,7 @@ func TestMiner06(t *testing.T) {
 		msg := node.Message{
 			Peer:    Client1ID,
 			Content: TestContent1,
-			Time:    time.Now(),
+			Time:    time.Now().Format(time.RFC3339Nano),
 		}
 
 		err = c1.HandleUiMessage(msg)
@@ -85,7 +120,7 @@ func TestMiner06(t *testing.T) {
 		msg = node.Message{
 			Peer:    Client2ID,
 			Content: TestContent3,
-			Time:    time.Now(),
+			Time:    time.Now().Format(time.RFC3339Nano),
 		}
 
 		err = c2.HandleUiMessage(msg)
@@ -96,7 +131,7 @@ func TestMiner06(t *testing.T) {
 		msg = node.Message{
 			Peer:    Client1ID,
 			Content: TestContent2,
-			Time:    time.Now(),
+			Time:    time.Now().Format(time.RFC3339Nano),
 		}
 
 		err = c1.HandleUiMessage(msg)
@@ -107,7 +142,7 @@ func TestMiner06(t *testing.T) {
 		msg = node.Message{
 			Peer:    Client2ID,
 			Content: TestContent4,
-			Time:    time.Now(),
+			Time:    time.Now().Format(time.RFC3339Nano),
 		}
 
 		err = c2.HandleUiMessage(msg)
@@ -118,7 +153,7 @@ func TestMiner06(t *testing.T) {
 		msg = node.Message{
 			Peer:    Client2ID,
 			Content: TestContent5,
-			Time:    time.Now(),
+			Time:    time.Now().Format(time.RFC3339Nano),
 		}
 
 		err = c2.HandleUiMessage(msg)
@@ -129,7 +164,7 @@ func TestMiner06(t *testing.T) {
 		// Wait 25 seconds for miner to mine its block
 		received := false
 		for i := 0; i < 5; i++ {
-			if len(c1.GetBlocks()) > 0 && len(c2.GetBlocks()) > 0 {
+			if len(c1.GetBlocks()) > 0 && len(c2.GetBlocks()) > 0 && len(mPeer.GetBlocks()) > 0 {
 				received = true
 				break
 			}
@@ -142,9 +177,14 @@ func TestMiner06(t *testing.T) {
 
 		c1Blocks := c1.GetBlocks()
 		c2Blocks := c2.GetBlocks()
+		mPeerBlocks := mPeer.GetBlocks()
 
 		if !reflect.DeepEqual(c1Blocks, c2Blocks) {
 			t.Fatalf("Both clients did not receive the same block")
+		}
+
+		if !reflect.DeepEqual(c2Blocks, mPeerBlocks) {
+			t.Fatalf("Miner and clients did not receive the same block")
 		}
 
 		if c1Blocks[0].Messages[0].Content != TestContent1 {
