@@ -55,6 +55,8 @@ func main() {
 		log.Fatal("Peering error:", err)
 	}
 
+	n.Start()
+
 	for {
 		time.Sleep(time.Hour)
 	}

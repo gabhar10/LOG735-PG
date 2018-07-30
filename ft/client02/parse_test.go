@@ -1,4 +1,4 @@
-package miner03
+package client02
 
 import (
 	"LOG735-PG/src/client"
@@ -9,7 +9,8 @@ import (
 	"log"
 )
 
-func TestClient02(t *testing.T) {
+//TODO : Should also check validity of Time of block
+func TestClient02_parse(t *testing.T) {
 	const MinerID = "8888"
 	const ClientID = "8889"
 	const TestContent = "This is a test"

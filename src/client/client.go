@@ -112,7 +112,7 @@ func (c *Client) Connect(anchorPort string) error {
 	}
 
 	// Restart Message Loop
-	go c.StartMessageLoop()
+	//go c.StartMessageLoop()
 
 	return nil
 }
@@ -156,9 +156,7 @@ func (c *Client) CloseConnection(disconnectingPeer string) error {
 }
 
 func (c *Client) ReceiveMessage(content string, temps time.Time, peer string, messageType int) {
-	if c.uiChannel != nil {
-		c.uiChannel <- node.Message{peer, content, temps}
-	}
+
 }
 
 func (c *Client) HandleUiMessage(message node.Message) error {

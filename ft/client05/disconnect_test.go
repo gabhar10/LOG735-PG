@@ -1,4 +1,4 @@
-package miner03
+package client05
 
 import (
 	"LOG735-PG/src/client"
@@ -7,10 +7,9 @@ import (
 	"testing"
 )
 
-func TestClient05(t *testing.T) {
+func TestClient05_disconnect(t *testing.T) {
 	const MinerID = "8888"
 	const ClientID = "8889"
-	const TestContent = "This is a test"
 
 	t.Run("Send message to miner", func(t *testing.T) {
 		// Create miner
