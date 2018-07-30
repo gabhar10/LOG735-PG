@@ -81,7 +81,7 @@ func TestMiner_findingNounce(t *testing.T) {
 			m := &Miner{
 				ID:                tt.fields.ID,
 				blocks:            tt.fields.blocks,
-				peers:             tt.fields.peers,
+				Peers:             tt.fields.peers,
 				rpcHandler:        tt.fields.rpcHandler,
 				IncomingMsgChan:   tt.fields.IncomingMsgChan,
 				incomingBlockChan: tt.fields.incomingBlockChan,
@@ -157,7 +157,7 @@ func TestMiner_CreateBlock(t *testing.T) {
 			m := &Miner{
 				ID:                tt.fields.ID,
 				blocks:            tt.fields.blocks,
-				peers:             tt.fields.peers,
+				Peers:             tt.fields.peers,
 				rpcHandler:        tt.fields.rpcHandler,
 				IncomingMsgChan:   tt.fields.IncomingMsgChan,
 				incomingBlockChan: tt.fields.incomingBlockChan,
@@ -199,7 +199,7 @@ func TestNewMiner(t *testing.T) {
 			got := NewMiner(tt.args.port, tt.args.peers)
 			miner, ok := got.(*Miner)
 			if ok {
-				if miner.ID != tt.args.port || len(miner.peers) != 1 || miner.peers[0] != tt.args.peers[0] {
+				if miner.ID != tt.args.port || len(miner.Peers) != 1 || miner.Peers[0] != tt.args.peers[0] {
 					t.Errorf("NewMiner() did not populate with port %s and peers %v", tt.args.port, tt.args.peers)
 				}
 				if cap(miner.blocks) != node.MinBlocksReturnSize || cap(miner.IncomingMsgChan) != node.MessagesChannelSize || cap(miner.incomingBlockChan) != node.BlocksChannelSize {
@@ -239,7 +239,7 @@ func TestMiner_Start(t *testing.T) {
 			m := &Miner{
 				ID:                tt.fields.ID,
 				blocks:            tt.fields.blocks,
-				peers:             tt.fields.peers,
+				Peers:             tt.fields.peers,
 				rpcHandler:        tt.fields.rpcHandler,
 				IncomingMsgChan:   tt.fields.IncomingMsgChan,
 				incomingBlockChan: tt.fields.incomingBlockChan,
@@ -436,9 +436,10 @@ func TestMiner_ReceiveMessage(t *testing.T) {
 		mutex             *sync.Mutex
 	}
 	type args struct {
-		content string
-		temps   time.Time
-		peer    string
+		content     string
+		temps       time.Time
+		peer        string
+		messageType int
 	}
 	tests := []struct {
 		name   string
@@ -452,9 +453,9 @@ func TestMiner_ReceiveMessage(t *testing.T) {
 				peers: []*node.Peer{},
 			},
 			args: func() []args {
-				msgs := make([]args, node.MessagesChannelSize/2)
+				msgs := []args{}
 				for i := 0; i < node.MessagesChannelSize/2; i++ {
-					msgs = append(msgs, args{"Hello", time.Now(), ""})
+					msgs = append(msgs, args{"Hello", time.Now(), "", brpc.MessageType})
 				}
 				return msgs
 			}(),
@@ -464,7 +465,7 @@ func TestMiner_ReceiveMessage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			m := NewMiner(tt.fields.ID, tt.fields.peers).(*Miner)
 			for _, a := range tt.args {
-				m.ReceiveMessage(a.content, a.temps, a.peer)
+				m.ReceiveMessage(a.content, a.temps, a.peer, a.messageType)
 			}
 
 			for i := 0; i < node.MessagesChannelSize/2; i++ {
@@ -509,7 +510,7 @@ func TestMiner_ReceiveBlock(t *testing.T) {
 			m := Miner{
 				ID:                tt.fields.ID,
 				blocks:            tt.fields.blocks,
-				peers:             tt.fields.peers,
+				Peers:             tt.fields.peers,
 				rpcHandler:        tt.fields.rpcHandler,
 				IncomingMsgChan:   tt.fields.IncomingMsgChan,
 				incomingBlockChan: tt.fields.incomingBlockChan,
@@ -581,7 +582,7 @@ func TestMiner_mining(t *testing.T) {
 			m := &Miner{
 				ID:                tt.fields.ID,
 				blocks:            tt.fields.blocks,
-				peers:             tt.fields.peers,
+				Peers:             tt.fields.peers,
 				rpcHandler:        tt.fields.rpcHandler,
 				IncomingMsgChan:   tt.fields.IncomingMsgChan,
 				incomingBlockChan: tt.fields.incomingBlockChan,
@@ -728,7 +729,7 @@ func TestMiner_clearProcessedMessages(t *testing.T) {
 			m := &Miner{
 				ID:                tt.fields.ID,
 				blocks:            tt.fields.blocks,
-				peers:             tt.fields.peers,
+				Peers:             tt.fields.peers,
 				rpcHandler:        tt.fields.rpcHandler,
 				IncomingMsgChan:   tt.fields.IncomingMsgChan,
 				incomingBlockChan: tt.fields.incomingBlockChan,

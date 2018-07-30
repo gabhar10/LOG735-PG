@@ -31,7 +31,7 @@ func (n *NodeRPC) DeliverMessage(args *MessageRPC, reply *int) error {
 	// Upon reception of message by a client
 	// MINEUR-03
 	// CLIENT-07
-	n.Node.ReceiveMessage(args.Message, args.Time, args.PeerID)
+	n.Node.ReceiveMessage(args.Message, args.Time, args.PeerID, args.MessageType)
 	return nil
 }
 
@@ -52,7 +52,12 @@ func (n *NodeRPC) GetBlocks(args *GetBlocksRPC, reply *BlocksRPC) error {
 }
 
 func (n *NodeRPC) Disconnect(args *string, reply *int) error {
-	// Send to all peers
+	n.Node.CloseConnection(*args)
 	// To implement
+	return nil
+}
+
+func (n *NodeRPC) Connect(args *string, reply *int) error {
+	n.Node.OpenConnection(*args)
 	return nil
 }

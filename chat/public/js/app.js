@@ -6,7 +6,9 @@ new Vue({
         newMsg: '', // New message input field
         chatContent: '', // List of all messages
         pseudo: null, // name of current user
-        joined: false // Indicates user has entered pseudo
+        joined: false, // Indicates user has entered pseudo
+        connected: true,
+        anchor: ''
     },
     created: function() {
         var self = this;
@@ -30,7 +32,16 @@ new Vue({
 
             var element = document.getElementById('chat-messages');
             element.scrollTop = element.scrollHeight; // Auto scroll to the bottom
+        });
 
+        $.ajax({
+            async:false,
+            cache:false,
+            type: "GET",
+            url: "http://localhost:" + location.port + "/getID",
+            success: function(data){
+                self.pseudo = data;
+            }
         });
     },
     methods: {
@@ -45,13 +56,34 @@ new Vue({
                 this.newMsg = ''; // Reset newMsg
             }
         },
-        set_pseudo: function () {
-            if (!this.pseudo) {
-                Materialize.toast('You must enter a name', 2000);
-                return
-            }
-            this.pseudo = $('<p>').html(this.pseudo).text();
-            this.joined = true;
+        disconnect: function() {
+            self = this;
+            Materialize.toast('Disconnecting from network', 2000);
+            $.ajax({
+                cache:false,
+                type: "GET",
+                url: "http://localhost:" + location.port + "/disconnect",
+                success: function(data){
+                    self.connected = false;
+                    self.chatContent = '';
+                },
+                error: function(XMLHttpRequest, textStatus, errorThrown) {
+                    alert("Status: " + textStatus); alert("Error: " + errorThrown);
+                }
+            });
+
+        },
+        connect: function(){
+            Materialize.toast('Connecting to peer ' + this.anchor, 2000);
+            $.ajax({
+                cache:false,
+                type: "POST",
+                url: "http://localhost:" + location.port + "/connect",
+                data: {anchor: this.anchor},
+                success: function(data){
+                    this.connected = true;
+                }.bind(this)
+            })
         }
     }
 });
