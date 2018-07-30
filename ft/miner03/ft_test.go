@@ -36,7 +36,6 @@ func TestMiner03(t *testing.T) {
 			t.Fatalf("Error while peering: %v", err)
 		}
 
-
 		err = c.HandleUiMessage(node.Message{
 			Peer:    ClientID,
 			Content: TestContent,

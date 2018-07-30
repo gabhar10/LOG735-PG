@@ -53,9 +53,7 @@ func (n *NodeRPC) GetBlocks(args *GetBlocksRPC, reply *BlocksRPC) error {
 }
 
 func (n *NodeRPC) Disconnect(args *string, reply *int) error {
-	n.Node.CloseConnection(*args)
-	// To implement
-	return nil
+	return n.Node.CloseConnection(*args)
 }
 
 func (n *NodeRPC) Connect(args *string, reply *int) error {

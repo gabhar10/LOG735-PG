@@ -4,11 +4,11 @@ import (
 	"LOG735-PG/src/node"
 	brpc "LOG735-PG/src/rpc"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"net/rpc"
 	"time"
-	"log"
 )
 
 type (
@@ -23,7 +23,6 @@ type (
 		msgLoopRunning bool
 	}
 )
-
 
 func NewClient(port string, peers []*node.Peer, uiChannel chan node.Message, nodeChannel chan node.Message) node.Node {
 	c := &Client{
@@ -106,7 +105,7 @@ func (c *Client) Connect(anchorPort string) error {
 	// Request Miner to create incoming connection
 	var reply int
 	err = client.Call("NodeRPC.Connect", c.ID, &reply)
-	if err != nil{
+	if err != nil {
 		log.Printf("Error while requesting connection to anchor : %s", err)
 		c.Peers = nil
 		return err
@@ -124,10 +123,13 @@ func (c *Client) Disconnect() error {
 	log.Printf("Disconnecting from network")
 	for _, conn := range c.Peers {
 		var reply int
-		conn.Conn.Call("NodeRPC.Disconnect", c.ID, &reply)
+		err := conn.Conn.Call("NodeRPC.Disconnect", &c.ID, &reply)
+		if err != nil {
+			return err
+		}
 	}
 	c.Peers = nil
-	if c.msgLoopRunning == true{
+	if c.msgLoopRunning == true {
 		c.msgLoopChan <- " "
 		c.msgLoopRunning = false
 	}
@@ -136,14 +138,14 @@ func (c *Client) Disconnect() error {
 }
 
 // Ignore all request for bidirectionnal connection
-func (c *Client) OpenConnection(connectingPort string) error{
+func (c *Client) OpenConnection(connectingPort string) error {
 	return nil
 }
 
 // Close connection of requesting peer
-func (c *Client) CloseConnection(disconnectingPeer string) error{
-	for i := 0; i < len(c.Peers); i++{
-		if c.Peers[i].Port == disconnectingPeer{
+func (c *Client) CloseConnection(disconnectingPeer string) error {
+	for i := 0; i < len(c.Peers); i++ {
+		if c.Peers[i].Port == disconnectingPeer {
 			c.Peers[i].Conn.Close()
 			c.Peers[i] = c.Peers[len(c.Peers)-1]
 			c.Peers = c.Peers[:len(c.Peers)-1]
@@ -175,14 +177,14 @@ func (c *Client) HandleUiMessage(message node.Message) error {
 func (c *Client) StartMessageLoop() error {
 	c.msgLoopRunning = true
 	for {
-		select{
-		case <- c.msgLoopChan:
+		select {
+		case <-c.msgLoopChan:
 			return nil
 		default:
 			time.Sleep(5 * time.Second)
 			for _, peer := range c.Peers {
 				var reply int
-				message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, "Bonjour", time.Now(),brpc.MessageType}
+				message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, "Bonjour", time.Now(), brpc.MessageType}
 				peer.Conn.Call("NodeRPC.DeliverMessage", message, &reply)
 			}
 			if c.nodeChannel != nil {

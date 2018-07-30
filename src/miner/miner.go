@@ -292,9 +292,10 @@ func (m *Miner) CloseConnection(disconnectingPeer string) error {
 	for i := 0; i < len(m.Peers); i++ {
 		if m.Peers[i].Port == disconnectingPeer {
 			log.Printf("Closing connection with %s", disconnectingPeer)
-			m.Peers[i].Conn.Close()
-			m.Peers[i] = m.Peers[len(m.Peers)-1]
-			m.Peers = m.Peers[:len(m.Peers)-1]
+			if m.Peers[i].Conn != nil {
+				m.Peers[i].Conn.Close()
+			}
+			m.Peers = append(m.Peers[:i], m.Peers[i+1:]...)
 			break
 		}
 	}
