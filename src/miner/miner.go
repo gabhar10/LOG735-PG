@@ -16,8 +16,9 @@ import (
 )
 
 type Miner struct {
-	ID                string            // i.e. Run-time port associated to container
-	blocks            []node.Block      // MINEUR-07
+	ID                string // i.e. Run-time port associated to container
+	blocks            []node.Block
+	miningBlock       node.Block        // MINEUR-07
 	peers             []*node.Peer      // Slice of peers
 	rpcHandler        *brpc.NodeRPC     // Handler for RPC requests
 	IncomingMsgChan   chan node.Message // Channel for incoming messages from other clients
@@ -30,7 +31,8 @@ type Miner struct {
 func NewMiner(port string, peers []*node.Peer) node.Node {
 	m := &Miner{
 		port,
-		make([]node.Block, node.MinBlocksReturnSize),
+		[]node.Block{},
+		node.Block{},
 		peers,
 		new(brpc.NodeRPC),
 		make(chan node.Message, node.MessagesChannelSize),
@@ -49,6 +51,7 @@ func (m *Miner) Start() {
 		m.blocks = append(m.blocks, block)
 		//MINEUR-06
 		m.BroadcastBlock(m.blocks)
+		m.miningBlock = node.Block{}
 	}()
 }
 
@@ -184,6 +187,50 @@ func (m *Miner) ReceiveBlock(block node.Block) {
 	m.quit <- false
 	// MINEUR-05
 
+	valid := false
+	//es-ce que le bloc precedant existe dans la chaine
+	for i := len(m.blocks) - 1; i >= 0; i-- {
+		if block.Header.PreviousBlock == m.blocks[i].Header.Hash {
+			valid = true
+			break
+		}
+	}
+
+	//que le hash est correct (bonne difficulter)
+	if valid {
+		valid = false
+
+		header := node.Header{
+			PreviousBlock: block.Header.PreviousBlock,
+			Nounce:        block.Header.Nounce,
+			Date:          block.Header.Date,
+		}
+		header.Hash = [sha256.Size]byte{}
+		hash := sha256.Sum256([]byte(fmt.Sprintf("%v", header)))
+		firstCharacters := string(hash[:node.MiningDifficulty])
+		if strings.Count(firstCharacters, "0") == node.MiningDifficulty && hash == block.Header.Hash {
+			valid = true
+		}
+	}
+	if !valid {
+		m.Start()
+	}
+
+	//bloc valide? on doit lajouter a ma chaine et broadcast ?
+	//si ils nous manque des messages, on doit aller les cherches sur les autres mineurs ?
+
+	//on enleve les messages du bloc valide qui sont dans le bloc quon etait en train de miner
+	if valid {
+		for _, receivedMessage := range block.Messages {
+			for i, miningMessage := range m.miningBlock.Messages {
+				if reflect.DeepEqual(receivedMessage, miningMessage) {
+					m.miningBlock.Messages[i] = node.Message{}
+					i--
+				}
+			}
+		}
+	}
+
 	// compare receivedBlock with miningBlock and
 	// delete messages from miningBlock that are in the receivedBlock if the receivedBlock is valid
 	// start another mining if we have len(messageQueue) > node.BlockSize
@@ -197,13 +244,13 @@ func (m *Miner) mining() node.Block {
 	case <-m.quit:
 		return node.Block{}
 	default:
-		block := m.CreateBlock()
-		hashedHeader, _ := m.findingNounce(&block)
-		log.Println("Nounce : ", block.Header.Nounce)
-		block.Header.Hash = hashedHeader
+		m.miningBlock = m.CreateBlock()
+		hashedHeader, _ := m.findingNounce(&m.miningBlock)
+		log.Println("Nounce : ", m.miningBlock.Header.Nounce)
+		m.miningBlock.Header.Hash = hashedHeader
 
 		//supprimer les messages de la waitingList
-		for _, message := range block.Messages {
+		for _, message := range m.miningBlock.Messages {
 			for j, unprocMessage := range m.waitingList {
 				if reflect.DeepEqual(unprocMessage, message) {
 					m.waitingList = append(m.waitingList[:j], m.waitingList[j+1:]...)
@@ -212,7 +259,7 @@ func (m *Miner) mining() node.Block {
 			}
 		}
 
-		return block
+		return m.miningBlock
 	}
 }
 
