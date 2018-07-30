@@ -1,61 +1,110 @@
-package client02
+package client09
 
 import (
 	"testing"
+	"LOG735-PG/src/node"
+	"LOG735-PG/src/client"
+	"time"
+	"LOG735-PG/src/miner"
+	"LOG735-PG/src/rpc"
 )
 
-//TODO : Should also check validity of Time of block
-func TestClient02_parse(t *testing.T) {
+
+// Un client doit afficher les messages dans l’ordre du contenue de chaque bloc
+func TestClient09_parse(t *testing.T) {
 	const ClientID = "8889"
+	const MinerID = "8888"
+	const Localhost = "127.0.0.1"
+	t.Run("client receives and parses 2 blocks from miner", func(t *testing.T) {
+		// Channel for communication
 
-	t.Run("Parse block", func(t *testing.T) {
-		/*// Channel for communication
+
+		minerPeers := []*node.Peer{
+			&node.Peer{
+				Host: "127.0.0.1",
+				Port: ClientID,
+			},
+		}
+
+		m := miner.NewMiner(MinerID, minerPeers).(*miner.Miner)
+
+
+		clientPeers := []*node.Peer{
+			&node.Peer{
+				Host: "127.0.0.1",
+				Port: MinerID,
+			},
+		}
+
 		uiChan := make(chan node.Message, node.BlockSize)
-		c := client.NewClient(ClientID, nil, uiChan, nil).(*client.Client)
+		c := client.NewClient(Localhost, ClientID, clientPeers, uiChan, nil).(*client.Client)
 
-		//err := c.Peer()
-		//if err != nil {
-		//	t.Fatalf("Error while peering: %v", err)
-		//}
-
-		//var chain []node.Block
-		var block1 node.Block
-		var block2 node.Block
-
-
-		for i := 0; i < node.BlockSize; i++{
-			block1.Messages[i] = node.Message{"1","test-1",time.Now().Format(time.RFC3339Nano)}
+		err := m.SetupRPC()
+		if err != nil {
+			t.Errorf("Miner could not setup RPC: %v", err)
+		}
+		err = c.SetupRPC()
+		if err != nil {
+			t.Errorf("Client could not setup RPC: %v", err)
 		}
 
 
-		log.Printf("%v", block1)
-		go c.ReceiveBlock(block1)
+		m.Start()
 
-		for i := 0; i < node.BlockSize; i++{
-			msg := <-uiChan
-			if msg.Content != "test-1"{
-				t.Fatalf("Error message was %s; should be test-1", msg.Content)
+		err = c.Peer()
+		if err != nil {
+			t.Errorf("Error while peering the client to the miner: %v", err)
+		}
+		err = m.Peer()
+		if err != nil {
+			t.Errorf("Error while peering the miner to the client: %v", err)
+		}
+
+		m.ReceiveMessage("peer-1", "Test-1", "time-1", rpc.MessageType)
+		m.ReceiveMessage("peer-2", "Test-2", "time-2", rpc.MessageType)
+		m.ReceiveMessage("peer-3", "Test-3", "time-3", rpc.MessageType)
+		m.ReceiveMessage("peer-4", "Test-4", "time-4", rpc.MessageType)
+		m.ReceiveMessage("peer-5", "Test-5", "time-5", rpc.MessageType)
+
+		received := false
+		for i := 0; i < 5; i++ {
+			if len(m.GetBlocks()) > 0 {
+				received = true
+				break
 			}
-			if msg.Peer != "1"{
-				t.Fatalf("Error peer was %s; should be 1", msg.Peer)
-			}
+			time.Sleep(time.Second * 2)
+		}
+		if !received {
+			t.Errorf("Miner did not mine a block")
+		}
+
+		if len(uiChan) != 5 {
+			t.Errorf("Channel should have 5 element in it; had %d", len(uiChan))
 		}
 
 
 
-		for i := 0; i < node.BlockSize; i++{
-			block2.Messages[i] = node.Message{"2","test-2",time.Now().Format(time.RFC3339Nano)}
+
+		m.ReceiveMessage("peer-6", "Test-6", "time-6", rpc.MessageType)
+		m.ReceiveMessage("peer-7", "Test-7", "time-7", rpc.MessageType)
+		m.ReceiveMessage("peer-8", "Test-8", "time-8", rpc.MessageType)
+		m.ReceiveMessage("peer-9", "Test-9", "time-9", rpc.MessageType)
+		m.ReceiveMessage("peer-10", "Test-10", "time-10", rpc.MessageType)
+
+		received = false
+		for i := 0; i < 5; i++ {
+			if len(m.GetBlocks()) > 1 {
+				received = true
+				break
+			}
+			time.Sleep(time.Second * 2)
+		}
+		if !received {
+			t.Errorf("Miner did not mine a second block")
 		}
 
-		go c.ReceiveBlock(block2)
-		for i := 0; i < node.BlockSize; i++{
-			msg := <-uiChan
-			if msg.Content != "test-2"{
-				t.Fatalf("Error message was %s; should be test-2", msg.Content)
-			}
-			if msg.Peer != "2"{
-				t.Fatalf("Error peer was %s; should be 2", msg.Peer)
-			}
-		}*/
+		if len(uiChan) != 5 {
+			t.Errorf("Channel should have 5 element in it; had %d", len(uiChan))
+		}
 	})
 }
