@@ -60,6 +60,7 @@ func (c *Client) SetupRPC() error {
 
 	listener, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%s", c.ID))
 	if err != nil {
+		log.Printf("Error while acquiring listener: %v", err)
 		return err
 	}
 	go s.Accept(listener)
@@ -73,6 +74,7 @@ func (c *Client) Peer() error {
 	for _, peer := range c.Peers {
 		client, err := brpc.ConnectTo(*peer)
 		if err != nil {
+			log.Printf("Error while connecting to peer: %v", err)
 			return err
 		}
 		args := &brpc.ConnectionRPC{c.ID}
@@ -80,6 +82,7 @@ func (c *Client) Peer() error {
 
 		err = client.Call("NodeRPC.Peer", args, &reply)
 		if err != nil {
+			log.Printf("Error while peering: %v", err)
 			return err
 		}
 		peer.Conn = client
@@ -143,6 +146,7 @@ func (c *Client) Disconnect() error {
 		var reply int
 		err := conn.Conn.Call("NodeRPC.Disconnect", &c.ID, &reply)
 		if err != nil {
+			log.Printf("Error while disconnecting: %v", err)
 			return err
 		}
 	}
@@ -198,6 +202,7 @@ func (c *Client) HandleUiMessage(msg node.Message) error {
 		message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, msg.Content, msg.Time, brpc.MessageType}
 		err := conn.Conn.Call("NodeRPC.DeliverMessage", message, &reply)
 		if err != nil {
+			log.Printf("Error while delivering message: %v", err)
 			return err
 		}
 	}
@@ -230,7 +235,6 @@ func (c *Client) StartMessageLoop() error {
 		}
 
 	}
-
 	return nil
 }
 
@@ -245,6 +249,7 @@ func (c *Client) BroadcastBlock(b node.Block) error {
 
 	for _, peer := range c.Peers {
 		if peer.Conn == nil {
+			log.Printf("RPC connection handler of peer %s is nil", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
 			return fmt.Errorf("RPC connection handler of peer %s is nil", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
 
 		}
@@ -254,6 +259,7 @@ func (c *Client) BroadcastBlock(b node.Block) error {
 		var reply *int
 		err := peer.Conn.Call("NodeRPC.DeliverBlock", &args, &reply)
 		if err != nil {
+			log.Printf("Error while delivering block: %v", err)
 			return err
 		}
 	}

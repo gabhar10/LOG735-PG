@@ -57,5 +57,8 @@ func ConnectTo(peer node.Peer) (*rpc.Client, error) {
 			break
 		}
 	}
+	if err != nil {
+		log.Printf("Error while dialing TCP RPC: %v", err)
+	}
 	return c, err
 }

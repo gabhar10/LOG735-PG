@@ -86,6 +86,7 @@ func (m *Miner) SetupRPC() error {
 
 	listener, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%s", m.ID))
 	if err != nil {
+		log.Printf("Error while acquiring listener: %v", err)
 		return err
 	}
 	go s.Accept(listener)
@@ -99,6 +100,7 @@ func (m *Miner) Peer() error {
 	for _, peer := range m.Peers {
 		client, err := brpc.ConnectTo(*peer)
 		if err != nil {
+			log.Printf("Error while getting RPC: %v", err)
 			return err
 		}
 		args := &brpc.ConnectionRPC{PeerID: peer.Port}
@@ -106,6 +108,7 @@ func (m *Miner) Peer() error {
 
 		err = client.Call("NodeRPC.Peer", args, &reply)
 		if err != nil {
+			log.Printf("Error while peering: %v", err)
 			return err
 		}
 		peer.Conn = client
@@ -135,6 +138,7 @@ func (m *Miner) BroadcastBlock(b node.Block) error {
 		var reply *int
 		err := peer.Conn.Call("NodeRPC.DeliverBlock", &args, &reply)
 		if err != nil {
+			log.Printf("Error while delivering block: %v", err)
 			return err
 		}
 	}
@@ -161,6 +165,7 @@ func (m *Miner) Broadcast(message node.Message) error {
 
 	for _, peer := range m.Peers {
 		if peer.Conn == nil {
+			log.Printf("RPC connection handler of peer %s is nil", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
 			return fmt.Errorf("RPC connection handler of peer %s is nil", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
 		}
 		args := brpc.MessageRPC{
@@ -170,6 +175,7 @@ func (m *Miner) Broadcast(message node.Message) error {
 		var reply *int
 		err := peer.Conn.Call("NodeRPC.DeliverMessage", &args, &reply)
 		if err != nil {
+			log.Printf("Error while delivering message: %v", err)
 			return err
 		}
 	}
@@ -299,6 +305,7 @@ func (m *Miner) ReceiveBlock(block node.Block) error {
 	m.mutex.Unlock()
 	err := m.BroadcastBlock(block)
 	if err != nil {
+		log.Printf("Error while broadcasting block: %v", err)
 		return err
 	}
 
@@ -345,6 +352,7 @@ findingNounce:
 	for {
 		select {
 		case <-m.quit:
+			log.Println("Quitting!")
 			return [sha256.Size]byte{}, fmt.Errorf("Quit")
 		default:
 			block.Header.Nounce = nounce
@@ -389,6 +397,7 @@ func (m *Miner) CloseConnection(disconnectingPeer string) error {
 				brpc.DisconnectionType}
 			var reply int
 			if m.Peers[i].Conn == nil {
+				log.Printf("Miner does not have a connection with peer %d", i)
 				return fmt.Errorf("Miner does not have a connection with peer %d", i)
 			}
 			err := m.Peers[i].Conn.Call("NodeRPC.DeliverMessage", disconnectionNotice, &reply)
