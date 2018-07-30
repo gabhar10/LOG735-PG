@@ -87,6 +87,7 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 
 		msg.Content = appMsg.Message
 		msg.Peer = appMsg.Peer
+		msg.Time = time.Now().Format(time.RFC3339Nano)
 		if err != nil {
 			log.Printf("error: %v", err)
 			delete(clients, ws)

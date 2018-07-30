@@ -213,11 +213,11 @@ func (m *Miner) ReceiveMessage(content, temps, peer string, messageType int) err
 	}
 	for _, m := range m.waitingList {
 		if reflect.DeepEqual(m, msg) {
-			log.Printf("Message \"%s\" from peer \"%s\" is already in waiting list", content, peer)
+			log.Printf("Message \"%s\" from peer \"%s\" is already in waiting list from %s", content, peer, msg.Time)
 			return nil
 		}
 	}
-	log.Printf("Appending message \"%s\" from peer \"%s\" in waiting list", msg.Content, msg.Peer)
+	log.Printf("Appending message \"%s\" from peer \"%s\" in waiting list at %s", msg.Content, msg.Peer, msg.Time)
 	log.Println("Locking mutex")
 	m.mutex.Lock()
 	m.waitingList = append(m.waitingList, msg)

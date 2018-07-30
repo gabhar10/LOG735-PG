@@ -12,6 +12,7 @@ func TestClient05_connect(t *testing.T) {
 	const ClientID = "8889"
 	const TestContent = "This is a test"
 
+
 	t.Run("Client connect to miner", func(t *testing.T) {
 		// Create miner
 		m := miner.NewMiner(MinerID, nil).(*miner.Miner)

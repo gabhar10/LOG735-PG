@@ -8,8 +8,8 @@ import (
 )
 
 func TestClient05_disconnect(t *testing.T) {
-	const MinerID = "8888"
-	const ClientID = "8889"
+	const MinerID = "9888"
+	const ClientID = "9889"
 	const Localhost = "localhost"
 
 	t.Run("Client disconnect from miner", func(t *testing.T) {

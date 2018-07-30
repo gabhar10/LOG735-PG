@@ -194,9 +194,6 @@ func (c *Client) ReceiveMessage(content, temps, peer string, messageType int) er
 	log.Printf("Client-%s::Entering ReceiveMessage()", c.ID)
 	defer log.Printf("Client-%s::Leaving ReceiveMessage()", c.ID)
 
-	if c.uiChannel != nil {
-		c.uiChannel <- node.Message{peer, content, temps}
-	}
 	return nil
 }
 
