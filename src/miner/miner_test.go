@@ -529,7 +529,11 @@ func TestMiner_ReceiveBlock(t *testing.T) {
 					for _, msg := range messages {
 						m.IncomingMsgChan <- msg
 					}
-					return m.mining()
+					b, err := m.mining()
+					if err != nil {
+						t.Errorf("Error while mining: %v", err)
+					}
+					return b
 				}(),
 			},
 			wantErr: false,
@@ -621,7 +625,10 @@ func TestMiner_mining(t *testing.T) {
 				}
 			}()
 
-			got := m.mining()
+			got, err := m.mining()
+			if err != nil {
+				t.Errorf("Error while mining: %v", err)
+			}
 
 			// To distinguish block returned from legit mining and quit channel message passing
 			if !strings.Contains(strings.ToLower(tt.name), "quit") {
@@ -716,7 +723,11 @@ func TestMiner_BroadcastBlock(t *testing.T) {
 					for _, msg := range messages {
 						m.IncomingMsgChan <- msg
 					}
-					return m.mining()
+					b, err := m.mining()
+					if err != nil {
+						t.Errorf("Error while mining: %v", err)
+					}
+					return b
 				}(),
 			},
 			expectedChainSize: 0,
@@ -792,7 +803,10 @@ func TestMiner_clearProcessedMessages(t *testing.T) {
 							Content: "This is a test",
 							Time:    time.Now().Format(time.RFC3339Nano)}
 					}
-					b := m.mining()
+					b, err := m.mining()
+					if err != nil {
+						t.Errorf("Error while mining: %v", err)
+					}
 					return &b
 				}(),
 			},

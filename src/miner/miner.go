@@ -52,7 +52,11 @@ func (m *Miner) Start() {
 	defer log.Printf("Miner-%s::Leaving Start()", m.ID)
 
 	go func() {
-		block := m.mining()
+		block, err := m.mining()
+		if err != nil {
+			log.Printf("Error while mining: %v", err)
+			return
+		}
 		//m.miningBlock = &block
 
 		//MINEUR-06
@@ -319,25 +323,25 @@ func (m *Miner) ReceiveBlock(block node.Block) error {
 	return nil
 }
 
-func (m *Miner) mining() node.Block {
+func (m *Miner) mining() (node.Block, error) {
 	log.Printf("Miner-%s::Entering mining()", m.ID)
 	defer log.Printf("Miner-%s::Leaving mining()", m.ID)
 
 	select {
 	case <-m.quit:
-		return node.Block{}
+		return node.Block{}, nil
 	default:
 		block := m.CreateBlock()
 		hashedHeader, err := m.findingNounce(&block)
 		if err != nil {
 			log.Printf("Error while finding nounce: %v", err)
-			return node.Block{}
+			return node.Block{}, fmt.Errorf("Error while finding nounce: %v", err)
 		}
 		log.Println("Nounce : ", block.Header.Nounce)
 		block.Header.Hash = hashedHeader
 
 		log.Printf("block: %v", block)
-		return block
+		return block, nil
 	}
 }
 
