@@ -37,7 +37,7 @@ func main() {
 		peers = append(peers, p)
 	}
 
-	clientNode = client.NewClient(os.Getenv("PORT"), peers, uiChannel, nodeChannel)
+	clientNode = client.NewClient(fmt.Sprintf("node-%s", os.Getenv("PORT")), os.Getenv("PORT"), peers, uiChannel, nodeChannel)
 	err := clientNode.SetupRPC()
 	if err != nil {
 		log.Fatal("RPC setup error:", err)
@@ -120,7 +120,8 @@ func handleConnect(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Cannot connect to yourself", 500)
 		return
 	}
-	clientNode.Connect(field)
+
+	clientNode.Connect(fmt.Sprintf("node-%s", field), field)
 }
 
 func handleGetID(w http.ResponseWriter, r *http.Request) {

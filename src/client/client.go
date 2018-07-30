@@ -15,6 +15,7 @@ import (
 
 type (
 	Client struct {
+		Host		   string
 		ID             string            // i.e. Run-time port associated to container
 		blocks         []node.Block      // Can be a subset of the full chain
 		Peers          []*node.Peer      // Slice of Peers
@@ -26,11 +27,12 @@ type (
 	}
 )
 
-func NewClient(port string, peers []*node.Peer, uiChannel chan node.Message, nodeChannel chan node.Message) node.Node {
+func NewClient(host string, port string, peers []*node.Peer, uiChannel chan node.Message, nodeChannel chan node.Message) node.Node {
 	log.Println("Client::Entering NewClient()")
 	defer log.Println("Client::Leaving NewClient()")
 
 	c := &Client{
+		host,
 		port,
 		[]node.Block{},
 		peers,
@@ -99,12 +101,12 @@ func (c *Client) GetBlocks() []node.Block {
 // should be implemented within this package
 
 // Connect node to Anchor Miner
-func (c *Client) Connect(anchorPort string) error {
+func (c *Client) Connect(host string, anchorPort string) error {
 	log.Printf("Client-%s::Entering Connect()", c.ID)
 	defer log.Printf("Client-%s::Leaving Connect()", c.ID)
 
 	anchorPeer := &node.Peer{
-		Host: fmt.Sprintf("node-%s", anchorPort),
+		Host: fmt.Sprintf(host),
 		Port: anchorPort}
 
 	// Connect to Anchor Miner
@@ -121,7 +123,15 @@ func (c *Client) Connect(anchorPort string) error {
 
 	// Request Miner to create incoming connection
 	var reply int
-	err = client.Call("NodeRPC.Connect", c.ID, &reply)
+
+
+	me := brpc.PeerRPC{
+		ConnectionRPC: brpc.ConnectionRPC{PeerID: c.ID},
+		Host: c.Host,
+		Port: c.ID}
+
+
+	err = client.Call("NodeRPC.Connect", &me, &reply)
 	if err != nil {
 		log.Printf("Error while requesting connection to anchor : %s", err)
 		c.Peers = nil
@@ -156,7 +166,7 @@ func (c *Client) Disconnect() error {
 }
 
 // Ignore all request for bidirectionnal connection
-func (c *Client) OpenConnection(connectingPort string) error {
+func (c *Client) OpenConnection(host string, connectingPort string) error {
 	log.Printf("Client-%s::Entering OpenConnection()", c.ID)
 	defer log.Printf("Client-%s::Leaving OpenConnection()", c.ID)
 
@@ -257,6 +267,7 @@ func (c *Client) ParseBlock(block node.Block) (error){
 		}
 
 	}
+	return nil
 }
 
 func (c *Client) BroadcastBlock(b node.Block) error {

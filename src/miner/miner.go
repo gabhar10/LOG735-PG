@@ -68,7 +68,7 @@ func (m *Miner) Start() {
 	}()
 }
 
-func (m *Miner) Connect(anchorPort string) error {
+func (m *Miner) Connect(host string, anchorPort string) error {
 	log.Printf("Miner-%s::Entering Connect()", m.ID)
 	defer log.Printf("Miner-%s::Leaving Connect()", m.ID)
 
@@ -388,12 +388,12 @@ func (m *Miner) CloseConnection(disconnectingPeer string) error {
 }
 
 // Open connection to requesting peer (Usually for 2-way communication
-func (m *Miner) OpenConnection(connectingPort string) error {
+func (m *Miner) OpenConnection(host string, connectingPort string) error {
 	log.Printf("Miner-%s::Entering OpenConnection()", m.ID)
 	defer log.Printf("Miner-%s::Leaving OpenConnection()", m.ID)
 
 	anchorPeer := &node.Peer{
-		Host: fmt.Sprintf("node-%s", connectingPort),
+		Host: host,
 		Port: connectingPort}
 
 	client, err := brpc.ConnectTo(*anchorPeer)

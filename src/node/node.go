@@ -7,8 +7,8 @@ type Node interface {
 	ReceiveMessage(string, string, string, int) error
 	ReceiveBlock(Block) error
 	Start()
-	Connect(string) error
+	Connect(string, string) error
 	Disconnect() error
 	CloseConnection(string) error
-	OpenConnection(string) error
+	OpenConnection(string, string) error
 }

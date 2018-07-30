@@ -41,6 +41,12 @@ type (
 		FirstBlock hash.Hash
 		LastBlock  hash.Hash
 	}
+
+	PeerRPC struct {
+		ConnectionRPC
+		Host string
+		Port string
+	}
 )
 
 func ConnectTo(peer node.Peer) (*rpc.Client, error) {

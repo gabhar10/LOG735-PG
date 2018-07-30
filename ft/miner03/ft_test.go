@@ -13,6 +13,7 @@ func TestMiner03(t *testing.T) {
 	const MinerID = "8888"
 	const ClientID = "8889"
 	const TestContent = "This is a test"
+	const Localhost = "localhost"
 
 	t.Run("Send message to miner", func(t *testing.T) {
 		// Create miner
@@ -31,7 +32,7 @@ func TestMiner03(t *testing.T) {
 		}
 		// Channel for communication
 		nodeChan := make(chan node.Message, 1)
-		c := client.NewClient(ClientID, clientPeers, nil, nodeChan).(*client.Client)
+		c := client.NewClient(Localhost, ClientID, clientPeers, nil, nodeChan).(*client.Client)
 		err := c.SetupRPC()
 		if err != nil {
 			t.Errorf("Error while setting up RPC with client: %v", err)

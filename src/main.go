@@ -35,7 +35,12 @@ func main() {
 
 	switch role {
 	case "client":
-		n = client.NewClient(os.Getenv("PORT"), peers, nil, nil)
+		n = client.NewClient(
+			fmt.Sprintf("node-%s", os.Getenv("PORT")),
+			os.Getenv("PORT"),
+			peers,
+			nil,
+			nil)
 	case "miner":
 		n = miner.NewMiner(os.Getenv("PORT"), peers)
 	default:

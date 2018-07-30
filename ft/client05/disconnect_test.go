@@ -10,8 +10,9 @@ import (
 func TestClient05_disconnect(t *testing.T) {
 	const MinerID = "8888"
 	const ClientID = "8889"
+	const Localhost = "localhost"
 
-	t.Run("Send message to miner", func(t *testing.T) {
+	t.Run("Client disconnect from miner", func(t *testing.T) {
 		// Create miner
 		minerPeers := []*node.Peer{
 			&node.Peer{
@@ -28,7 +29,7 @@ func TestClient05_disconnect(t *testing.T) {
 		}
 		// Channel for communication
 		nodeChan := make(chan node.Message, 1)
-		c := client.NewClient(ClientID, clientPeers, nil, nodeChan).(*client.Client)
+		c := client.NewClient(Localhost, ClientID, clientPeers, nil, nodeChan).(*client.Client)
 		err := c.Peer()
 		if err != nil {
 			t.Fatalf("Error while peering: %v", err)
@@ -43,6 +44,7 @@ func TestClient05_disconnect(t *testing.T) {
 		}
 
 		err = c.Disconnect()
+
 		if err != nil {
 			t.Fatalf("Error returned while disconnecting: %v", err)
 		}

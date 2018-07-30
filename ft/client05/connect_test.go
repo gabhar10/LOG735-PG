@@ -15,14 +15,16 @@ func TestClient05_connect(t *testing.T) {
 	t.Run("Client connect to miner", func(t *testing.T) {
 		// Create miner
 		m := miner.NewMiner(MinerID, nil).(*miner.Miner)
-		m.SetupRPC(MinerID)
+		m.SetupRPC()
 		// Create client
 
-		c := client.NewClient(ClientID, nil, nil, nil).(*client.Client)
-		c.SetupRPC(ClientID)
+		c := client.NewClient("127.0.0.1", ClientID, nil, nil, nil).(*client.Client)
+		c.SetupRPC()
 
-		err := c.Connect(MinerID)
-		t.Fatalf("Error returned while connecting to anchor: %v", err)
+		err := c.Connect("127.0.0.1", MinerID)
+		if err != nil {
+			t.Fatalf("Error returned while connecting to anchor: %v", err)
+		}
 
 
 

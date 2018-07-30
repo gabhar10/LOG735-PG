@@ -55,7 +55,7 @@ func (n *NodeRPC) Disconnect(args *string, reply *int) error {
 	return n.Node.CloseConnection(*args)
 }
 
-func (n *NodeRPC) Connect(args *string, reply *int) error {
-	n.Node.OpenConnection(*args)
+func (n *NodeRPC) Connect(args *PeerRPC, reply *int) error {
+	n.Node.OpenConnection(args.Host, args.Port)
 	return nil
 }
