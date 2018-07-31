@@ -12,6 +12,7 @@ import (
 )
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	// Check for empty environment variables
 	for _, role := range []string{"ROLE", "PORT", "PEERS"} {
 		env := os.Getenv(role)
@@ -35,7 +36,12 @@ func main() {
 
 	switch role {
 	case "client":
-		n = client.NewClient(os.Getenv("PORT"), peers, nil, nil)
+		n = client.NewClient(
+			fmt.Sprintf("node-%s", os.Getenv("PORT")),
+			os.Getenv("PORT"),
+			peers,
+			nil,
+			nil)
 	case "miner":
 		n = miner.NewMiner(os.Getenv("PORT"), peers)
 	default:
@@ -53,6 +59,8 @@ func main() {
 	if err != nil {
 		log.Fatal("Peering error:", err)
 	}
+
+	n.Start()
 
 	for {
 		time.Sleep(time.Hour)

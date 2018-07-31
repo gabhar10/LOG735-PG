@@ -15,6 +15,7 @@ import (
 
 type (
 	Client struct {
+		Host           string
 		ID             string            // i.e. Run-time port associated to container
 		blocks         []node.Block      // Can be a subset of the full chain
 		Peers          []*node.Peer      // Slice of Peers
@@ -26,11 +27,12 @@ type (
 	}
 )
 
-func NewClient(port string, peers []*node.Peer, uiChannel chan node.Message, nodeChannel chan node.Message) node.Node {
+func NewClient(host string, port string, peers []*node.Peer, uiChannel chan node.Message, nodeChannel chan node.Message) node.Node {
 	log.Println("Client::Entering NewClient()")
 	defer log.Println("Client::Leaving NewClient()")
 
 	c := &Client{
+		host,
 		port,
 		[]node.Block{},
 		peers,
@@ -102,12 +104,12 @@ func (c *Client) GetBlocks() []node.Block {
 // should be implemented within this package
 
 // Connect node to Anchor Miner
-func (c *Client) Connect(anchorPort string) error {
+func (c *Client) Connect(host string, anchorPort string) error {
 	log.Printf("Client-%s::Entering Connect()", c.ID)
 	defer log.Printf("Client-%s::Leaving Connect()", c.ID)
 
 	anchorPeer := &node.Peer{
-		Host: fmt.Sprintf("node-%s", anchorPort),
+		Host: fmt.Sprintf(host),
 		Port: anchorPort}
 
 	// Connect to Anchor Miner
@@ -124,15 +126,33 @@ func (c *Client) Connect(anchorPort string) error {
 
 	// Request Miner to create incoming connection
 	var reply int
-	err = client.Call("NodeRPC.Connect", c.ID, &reply)
+
+	me := brpc.PeerRPC{
+		ConnectionRPC: brpc.ConnectionRPC{PeerID: c.ID},
+		Host:          c.Host,
+		Port:          c.ID}
+
+	err = client.Call("NodeRPC.Connect", &me, &reply)
 	if err != nil {
 		log.Printf("Error while requesting connection to anchor : %s", err)
 		c.Peers = nil
 		return err
 	}
 
+	var replyBlock brpc.BlocksRPC
+	var sendBlock brpc.GetBlocksRPC
+
+	err = client.Call("NodeRPC.GetBlocks", sendBlock, &replyBlock)
+	if err != nil {
+		log.Printf("Error while fetching block from anchor : %s", err)
+		c.Peers = nil
+		return err
+	}
+	for _, block := range replyBlock.Blocks {
+		c.ParseBlock(block)
+	}
 	// Restart Message Loop
-	go c.StartMessageLoop()
+	//go c.StartMessageLoop()
 
 	return nil
 }
@@ -144,6 +164,11 @@ func (c *Client) Disconnect() error {
 
 	for _, conn := range c.Peers {
 		var reply int
+
+		if conn.Conn == nil {
+			log.Println("Error: Peer's connection is nil")
+			return fmt.Errorf("Error: Peer's connection is nil")
+		}
 		err := conn.Conn.Call("NodeRPC.Disconnect", &c.ID, &reply)
 		if err != nil {
 			log.Printf("Error while disconnecting: %v", err)
@@ -160,7 +185,7 @@ func (c *Client) Disconnect() error {
 }
 
 // Ignore all request for bidirectionnal connection
-func (c *Client) OpenConnection(connectingPort string) error {
+func (c *Client) OpenConnection(host string, connectingPort string) error {
 	log.Printf("Client-%s::Entering OpenConnection()", c.ID)
 	defer log.Printf("Client-%s::Leaving OpenConnection()", c.ID)
 
@@ -187,9 +212,6 @@ func (c *Client) ReceiveMessage(content, temps, peer string, messageType int) er
 	log.Printf("Client-%s::Entering ReceiveMessage()", c.ID)
 	defer log.Printf("Client-%s::Leaving ReceiveMessage()", c.ID)
 
-	if c.uiChannel != nil {
-		c.uiChannel <- node.Message{peer, content, temps}
-	}
 	return nil
 }
 
@@ -200,6 +222,11 @@ func (c *Client) HandleUiMessage(msg node.Message) error {
 	for _, conn := range c.Peers {
 		var reply int
 		message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, msg.Content, msg.Time, brpc.MessageType}
+
+		if conn.Conn == nil {
+			log.Println("Error: Peer's connection is nil")
+			return fmt.Errorf("Error: Peer's connection is nil")
+		}
 		err := conn.Conn.Call("NodeRPC.DeliverMessage", message, &reply)
 		if err != nil {
 			log.Printf("Error while delivering message: %v", err)
@@ -223,15 +250,49 @@ func (c *Client) StartMessageLoop() error {
 			for _, peer := range c.Peers {
 				var reply int
 				message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, "Bonjour", time.Now().Format(time.RFC3339Nano), brpc.MessageType}
+
+				if peer.Conn == nil {
+					log.Println("Error: Peer's connection is nil")
+					return fmt.Errorf("Error: Peer's connection is nil")
+				}
 				err := peer.Conn.Call("NodeRPC.DeliverMessage", message, &reply)
 				if err != nil {
 					log.Printf("Error while trying to deliver message: %v", err)
 					return fmt.Errorf("Error while trying to deliver message: %v", err)
 				}
+
 			}
 			if c.nodeChannel != nil {
 				c.uiChannel <- node.Message{c.ID, "Bonjour", time.Now().Format(time.RFC3339Nano)}
 			}
+		}
+	}
+
+	return nil
+}
+
+func (c *Client) GetAnchorBlock() ([]node.Block, error) {
+	if len(c.Peers) > 0 {
+		if c.Peers[0].Conn != nil {
+			var reply brpc.BlocksRPC
+
+			if c.Peers[0].Conn == nil {
+				log.Println("Error: Peer's connection is nil")
+				return nil, fmt.Errorf("Error: Peer's connection is nil")
+			}
+			c.Peers[0].Conn.Call("NodeRPC.GetBlocks", nil, &reply)
+			return reply.Blocks, nil
+		}
+		return nil, fmt.Errorf("no open connection with peer")
+	}
+	return nil, fmt.Errorf("there are no peer available to give a block")
+}
+
+func (c *Client) ParseBlock(block node.Block) error {
+	if c.uiChannel != nil {
+		for _, msg := range block.Messages {
+			log.Printf("Filling channel...")
+			c.uiChannel <- node.Message{msg.Peer, msg.Content, msg.Time}
 		}
 
 	}
@@ -257,6 +318,11 @@ func (c *Client) BroadcastBlock(b node.Block) error {
 			ConnectionRPC: brpc.ConnectionRPC{PeerID: c.ID},
 			Block:         b}
 		var reply *int
+
+		if peer.Conn == nil {
+			log.Println("Error: Peer's connection is nil")
+			return fmt.Errorf("Error: Peer's connection is nil")
+		}
 		err := peer.Conn.Call("NodeRPC.DeliverBlock", &args, &reply)
 		if err != nil {
 			log.Printf("Error while delivering block: %v", err)
@@ -266,11 +332,11 @@ func (c *Client) BroadcastBlock(b node.Block) error {
 	return nil
 }
 
-func (c *Client) ReceiveBlock(block node.Block) error {
+func (c *Client) ReceiveBlock(block node.Block, peer string) error {
 	log.Printf("Client-%s::Entering ReceiveBlock()", c.ID)
 	defer log.Printf("Client-%s::Leaving ReceiveBlock()", c.ID)
 
-	log.Printf("Block header hash: %v, Block header nounce: %v, Block header date: %v", block.Header.Hash, block.Header.Nounce, block.Header.Date)
+	log.Printf("Received block %v from \"%s\"", block, peer)
 	// Do we already have this block in the chain?
 	for _, b := range c.blocks {
 		if reflect.DeepEqual(b, block) {
@@ -328,6 +394,7 @@ func (c *Client) ReceiveBlock(block node.Block) error {
 	// TODO: Use mutex?
 	tempBlocks := append(c.blocks, block)
 	c.blocks = tempBlocks
+	c.ParseBlock(block)
 
 	return c.BroadcastBlock(block)
 }

@@ -13,6 +13,7 @@ func TestMiner04(t *testing.T) {
 	const MinerID = "8889"
 	const Client1ID = "8888"
 	const Client2ID = "8887"
+	const Localhost = "localhost"
 	const TestContent1 = "This is a test from Client1"
 	const TestContent2 = "This is a another test from Client1"
 	const TestContent3 = "This is a test from Client2"
@@ -44,7 +45,7 @@ func TestMiner04(t *testing.T) {
 
 		// Create client1
 		nodeChan1 := make(chan node.Message, 1)
-		c1 := client.NewClient(Client1ID, clientPeers, nil, nodeChan1).(*client.Client)
+		c1 := client.NewClient(Localhost, Client1ID, clientPeers, nil, nodeChan1).(*client.Client)
 
 		err = c1.SetupRPC()
 		if err != nil {
@@ -58,7 +59,7 @@ func TestMiner04(t *testing.T) {
 
 		// Create client2
 		nodeChan2 := make(chan node.Message, 1)
-		c2 := client.NewClient(Client2ID, clientPeers, nil, nodeChan2).(*client.Client)
+		c2 := client.NewClient(Localhost, Client2ID, clientPeers, nil, nodeChan2).(*client.Client)
 
 		err = c2.SetupRPC()
 		if err != nil {

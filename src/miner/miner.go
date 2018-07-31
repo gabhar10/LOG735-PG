@@ -16,9 +16,8 @@ import (
 )
 
 type Miner struct {
-	ID     string // i.e. Run-time port associated to container
-	blocks []node.Block
-	//miningBlock       *node.Block       // MINEUR-07
+	ID                string // i.e. Run-time port associated to container
+	blocks            []node.Block
 	Peers             []*node.Peer      // Slice of peers
 	rpcHandler        *brpc.NodeRPC     // Handler for RPC requests
 	IncomingMsgChan   chan node.Message // Channel for incoming messages from other clients
@@ -37,7 +36,6 @@ func NewMiner(port string, peers []*node.Peer) node.Node {
 	m := &Miner{
 		port,
 		[]node.Block{},
-		//nil,
 		peers,
 		new(brpc.NodeRPC),
 		make(chan node.Message, node.MessagesChannelSize),
@@ -59,8 +57,6 @@ func (m *Miner) Start() {
 
 	go func() {
 		for {
-			log.Println("Locking startMiningMutex")
-			m.startMiningMutex.Lock()
 			block, err := m.mining()
 			// Check if Quit was called
 			if block == (node.Block{}) && err == nil {
@@ -72,16 +68,12 @@ func (m *Miner) Start() {
 
 			m.blocks = append(m.blocks, block)
 			m.BroadcastBlock(block)
-			m.mutex.Lock()
-			log.Println("Locking mutex")
 			m.clearProcessedMessages(&block)
-			m.mutex.Unlock()
-			log.Println("Unlocking mutex")
 		}
 	}()
 }
 
-func (m *Miner) Connect(anchorPort string) error {
+func (m *Miner) Connect(host string, anchorPort string) error {
 	log.Printf("Miner-%s::Entering Connect()", m.ID)
 	defer log.Printf("Miner-%s::Leaving Connect()", m.ID)
 
@@ -146,10 +138,17 @@ func (m *Miner) BroadcastBlock(b node.Block) error {
 			return fmt.Errorf("RPC connection handler of peer %s is nil", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
 		}
 		args := brpc.BlockRPC{
-			ConnectionRPC: brpc.ConnectionRPC{PeerID: peer.Port},
+			ConnectionRPC: brpc.ConnectionRPC{PeerID: m.ID},
 			Block:         b}
 		var reply *int
+
+		if peer.Conn == nil {
+			log.Println("Error: Peer's connection is nil")
+			return fmt.Errorf("Error: Peer's connection is nil")
+		}
+		log.Printf("Sending block to peer %s", peer.Port)
 		err := peer.Conn.Call("NodeRPC.DeliverBlock", &args, &reply)
+		log.Printf("Sent block to peer %s", peer.Port)
 		if err != nil {
 			log.Printf("Error while delivering block: %v", err)
 			return err
@@ -186,6 +185,11 @@ func (m *Miner) Broadcast(message node.Message) error {
 			Message:       message.Content,
 			Time:          message.Time}
 		var reply *int
+
+		if peer.Conn == nil {
+			log.Println("Error: Peer's connection is nil")
+			return fmt.Errorf("Error: Peer's connection is nil")
+		}
 		err := peer.Conn.Call("NodeRPC.DeliverMessage", &args, &reply)
 		if err != nil {
 			log.Printf("Error while delivering message: %v", err)
@@ -239,16 +243,16 @@ func (m *Miner) ReceiveMessage(content, temps, peer string, messageType int) err
 	}
 	for _, m := range m.waitingList {
 		if reflect.DeepEqual(m, msg) {
-			log.Printf("Message \"%s\" from peer \"%s\" is already in waiting list", content, peer)
+			log.Printf("Message \"%s\" from peer \"%s\" is already in waiting list from %s", content, peer, msg.Time)
 			return nil
 		}
 	}
-	log.Printf("Appending message \"%s\" from peer \"%s\" in waiting list", msg.Content, msg.Peer)
-	log.Println("Locking mutex")
+	log.Printf("Appending message \"%s\" from peer \"%s\" in waiting list at %s", msg.Content, msg.Peer, msg.Time)
+	log.Printf("Locking waitingList mutex")
 	m.mutex.Lock()
 	m.waitingList = append(m.waitingList, msg)
+	log.Printf("Unlocking waitingList mutex")
 	m.mutex.Unlock()
-	log.Println("Unlocking mutex")
 
 	err := m.Broadcast(msg)
 	if err != nil {
@@ -259,10 +263,11 @@ func (m *Miner) ReceiveMessage(content, temps, peer string, messageType int) err
 	return nil
 }
 
-func (m *Miner) ReceiveBlock(block node.Block) error {
+func (m *Miner) ReceiveBlock(block node.Block, peer string) error {
 	log.Printf("Miner-%s::Entering ReceiveBlock()", m.ID)
 	defer log.Printf("Miner-%s::Leaving ReceiveBlock()", m.ID)
 
+	log.Printf("Received block %v from \"%s\"", block, peer)
 	// Do we already have this block in the chain?
 	for _, b := range m.blocks {
 		if reflect.DeepEqual(b, block) {
@@ -303,9 +308,6 @@ func (m *Miner) ReceiveBlock(block node.Block) error {
 		firstCharacters := string(hash[:node.MiningDifficulty])
 		if strings.Count(firstCharacters, "0") == node.MiningDifficulty && hash == block.Header.Hash {
 			log.Println("Received block's hash is valid! Stopping current mining operation.")
-			m.startMiningMutex.Lock()
-			defer m.startMiningMutex.Unlock()
-			m.quit <- false
 		} else {
 			log.Println("Received block's hash is not valid! Discarding block")
 			return nil
@@ -319,7 +321,6 @@ func (m *Miner) ReceiveBlock(block node.Block) error {
 
 	//on enleve les messages du bloc valide qui sont dans le bloc quon etait en train de miner
 
-	m.mutex.Lock()
 	m.clearProcessedMessages(&block)
 	m.mutex.Unlock()
 	// Malicious nodes do not broadcast new valid blocks
@@ -343,25 +344,23 @@ func (m *Miner) mining() (node.Block, error) {
 	defer log.Printf("Miner-%s::Leaving mining()", m.ID)
 
 	// This method should only be called via Start()
-	log.Println("Unlocking startMiningMutex")
-	m.startMiningMutex.Unlock()
-
-	select {
-	case <-m.quit:
-		return node.Block{}, nil
-	default:
-		block := m.CreateBlock()
-		hashedHeader, err := m.findingNounce(&block)
-		if err != nil {
-			log.Printf("Error while finding nounce: %v", err)
-			return node.Block{}, fmt.Errorf("Error while finding nounce: %v", err)
-		}
-		log.Println("Nounce : ", block.Header.Nounce)
-		block.Header.Hash = hashedHeader
-
-		log.Printf("block: %v", block)
-		return block, nil
+	block := m.CreateBlock()
+	hashedHeader, err := m.findingNounce(&block)
+	if err != nil {
+		log.Printf("Error while finding nounce: %v", err)
+		return node.Block{}, fmt.Errorf("Error while finding nounce: %v", err)
 	}
+	// Did quit get invoked?
+	if hashedHeader == ([sha256.Size]byte{}) {
+		log.Println("Quit was invoked. Leaving mining")
+		return node.Block{}, nil
+	}
+
+	log.Println("Nounce : ", block.Header.Nounce)
+	block.Header.Hash = hashedHeader
+
+	log.Printf("block: %v", block)
+	return block, nil
 }
 
 func (m *Miner) findingNounce(block *node.Block) ([sha256.Size]byte, error) {
@@ -416,34 +415,18 @@ func (m *Miner) CloseConnection(disconnectingPeer string) error {
 			}
 			m.Peers = append(m.Peers[:i], m.Peers[i+1:]...)
 			break
-		} else {
-			disconnectionNotice := brpc.MessageRPC{
-				brpc.ConnectionRPC{m.ID},
-				disconnectingPeer,
-				time.Now().Format(time.RFC3339),
-				brpc.DisconnectionType}
-			var reply int
-			if m.Peers[i].Conn == nil {
-				log.Printf("Miner does not have a connection with peer %d", i)
-				return fmt.Errorf("Miner does not have a connection with peer %d", i)
-			}
-			err := m.Peers[i].Conn.Call("NodeRPC.DeliverMessage", disconnectionNotice, &reply)
-			if err != nil {
-				log.Printf("Error while trying to deliver message to peer: %v", err)
-				return err
-			}
 		}
 	}
 	return nil
 }
 
 // Open connection to requesting peer (Usually for 2-way communication
-func (m *Miner) OpenConnection(connectingPort string) error {
+func (m *Miner) OpenConnection(host string, connectingPort string) error {
 	log.Printf("Miner-%s::Entering OpenConnection()", m.ID)
 	defer log.Printf("Miner-%s::Leaving OpenConnection()", m.ID)
 
 	anchorPeer := &node.Peer{
-		Host: fmt.Sprintf("node-%s", connectingPort),
+		Host: host,
 		Port: connectingPort}
 
 	client, err := brpc.ConnectTo(*anchorPeer)
@@ -453,6 +436,7 @@ func (m *Miner) OpenConnection(connectingPort string) error {
 	}
 	log.Printf("Successfully peered with node-%s\n", connectingPort)
 	anchorPeer.Conn = client
+
 	m.Peers = append(m.Peers, anchorPeer)
 
 	return nil
@@ -463,6 +447,8 @@ func (m *Miner) clearProcessedMessages(block *node.Block) {
 	defer log.Printf("Miner-%s::Leaving clearProcessedMessages()", m.ID)
 
 	//supprimer les messages de la waitingList
+	log.Printf("Locking waitingList mutex")
+	m.mutex.Lock()
 	for _, message := range block.Messages {
 		for j, unprocMessage := range m.waitingList {
 			if reflect.DeepEqual(unprocMessage, message) {
@@ -472,4 +458,6 @@ func (m *Miner) clearProcessedMessages(block *node.Block) {
 			}
 		}
 	}
+	log.Printf("Unlocking waitingList mutex")
+	m.mutex.Unlock()
 }

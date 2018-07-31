@@ -31,8 +31,8 @@ func (n *NodeRPC) DeliverMessage(args *MessageRPC, reply *int) error {
 	// Upon reception of message by a client
 	// MINEUR-03
 	// CLIENT-07
-	n.Node.ReceiveMessage(args.Message, args.Time, args.PeerID, args.MessageType)
-	return nil
+	// To force delivery in right order, make this a synchronous call
+	return n.Node.ReceiveMessage(args.Message, args.Time, args.PeerID, args.MessageType)
 }
 
 func (n *NodeRPC) DeliverBlock(args *BlockRPC, reply *int) error {
@@ -40,21 +40,24 @@ func (n *NodeRPC) DeliverBlock(args *BlockRPC, reply *int) error {
 	// To implement
 	// MINEUR-09
 	// MINEUR-11
-	return n.Node.ReceiveBlock(args.Block)
+	go n.Node.ReceiveBlock(args.Block, args.PeerID)
+	return nil
 	// If block is valid, halt current work to find block and start a new one including this new one
 }
 
 func (n *NodeRPC) GetBlocks(args *GetBlocksRPC, reply *BlocksRPC) error {
 	// CLIENT-10
 	// To implement
+	reply.Blocks = n.Node.GetBlocks()
 	return nil
 }
 
 func (n *NodeRPC) Disconnect(args *string, reply *int) error {
-	return n.Node.CloseConnection(*args)
+	go n.Node.CloseConnection(*args)
+	return nil
 }
 
-func (n *NodeRPC) Connect(args *string, reply *int) error {
-	n.Node.OpenConnection(*args)
+func (n *NodeRPC) Connect(args *PeerRPC, reply *int) error {
+	n.Node.OpenConnection(args.Host, args.Port)
 	return nil
 }

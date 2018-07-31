@@ -16,7 +16,7 @@ import (
 const HttpPort = ":8000"
 
 var clients = make(map[*websocket.Conn]bool) // Websocket Slice for exchange between server and web application
-var uiChannel = make(chan node.Message)      // Channel for incoming message from Client Node
+var uiChannel = make(chan node.Message, node.BlockSize)      // Channel for incoming message from Client Node
 var nodeChannel = make(chan node.Message)    // Channel for outgoing message from web application
 var upgrader = websocket.Upgrader{}          // Used to upgrade HTTP connection to websocket
 var clientNode node.Node                     // Server's client nod reference
@@ -37,7 +37,7 @@ func main() {
 		peers = append(peers, p)
 	}
 
-	clientNode = client.NewClient(os.Getenv("PORT"), peers, uiChannel, nodeChannel)
+	clientNode = client.NewClient(fmt.Sprintf("node-%s", os.Getenv("PORT")), os.Getenv("PORT"), peers, uiChannel, nodeChannel)
 	err := clientNode.SetupRPC()
 	if err != nil {
 		log.Fatal("RPC setup error:", err)
@@ -87,12 +87,13 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 
 		msg.Content = appMsg.Message
 		msg.Peer = appMsg.Peer
+		msg.Time = time.Now().Format(time.RFC3339Nano)
 		if err != nil {
 			log.Printf("error: %v", err)
 			delete(clients, ws)
 			break
 		}
-		uiChannel <- msg
+		//uiChannel <- msg
 		var client = clientNode.(*client.Client)
 		client.HandleUiMessage(msg)
 	}
@@ -120,7 +121,8 @@ func handleConnect(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Cannot connect to yourself", 500)
 		return
 	}
-	clientNode.Connect(field)
+
+	clientNode.Connect(fmt.Sprintf("node-%s", field), field)
 }
 
 func handleGetID(w http.ResponseWriter, r *http.Request) {

@@ -1,4 +1,4 @@
-package miner03
+package client05
 
 import (
 	"LOG735-PG/src/client"
@@ -7,11 +7,12 @@ import (
 	"testing"
 )
 
-// CLIENT-05: L’application client doit permettre à l’utilisateur de se déconnecter
-func TestClient05(t *testing.T) {
-	const MinerID = "8888"
-	const ClientID = "8889"
-	const TestContent = "This is a test"
+func TestClient05_disconnect(t *testing.T) {
+	const MinerID = "9888"
+	const ClientID = "9889"
+	const Localhost = "localhost"
+	// CLIENT-05: L’application client doit permettre à l’utilisateur de se déconnecter
+
 
 	t.Run("L’application client doit permettre à l’utilisateur de se déconnecter", func(t *testing.T) {
 		// Create miner
@@ -33,7 +34,8 @@ func TestClient05(t *testing.T) {
 		}
 		// Channel for communication
 		nodeChan := make(chan node.Message, 1)
-		c := client.NewClient(ClientID, clientPeers, nil, nodeChan).(*client.Client)
+
+		c := client.NewClient(Localhost, ClientID, clientPeers, nil, nodeChan).(*client.Client)
 		err = c.Peer()
 		if err != nil {
 			t.Errorf("Error while peering: %v", err)
@@ -48,6 +50,7 @@ func TestClient05(t *testing.T) {
 		}
 
 		err = c.Disconnect()
+
 		if err != nil {
 			t.Errorf("Error returned while disconnecting: %v", err)
 		}
