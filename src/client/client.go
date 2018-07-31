@@ -60,7 +60,7 @@ func (c *Client) Start() {
 }
 
 func (c *Client) GetChain() {
-	for _, block := range c.blocks{
+	for _, block := range c.blocks {
 		c.ParseBlock(block)
 	}
 }
@@ -99,6 +99,12 @@ func (c *Client) Peer() error {
 			log.Printf("Error while peering: %v", err)
 			return err
 		}
+
+		// Take longest chain
+		if len(reply.Blocks) > len(c.blocks) {
+			c.blocks = reply.Blocks
+		}
+
 		peer.Conn = client
 		log.Printf("Successfully peered with node-%s\n", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
 	}
@@ -157,6 +163,8 @@ func (c *Client) Connect(host string, anchorPort string) error {
 	err = client.Call("NodeRPC.GetBlocks", sendBlock, &replyBlock)
 	if err != nil {
 		log.Printf("Error while fetching block from anchor : %s", err)
+		var reply int
+		client.Call("NodeRPC.Disconnect", &c.ID, &reply)
 		c.Peers = nil
 		return err
 	}
@@ -187,7 +195,7 @@ func (c *Client) Disconnect() error {
 		err := conn.Conn.Call("NodeRPC.Disconnect", &c.ID, &reply)
 		if err != nil {
 			log.Printf("Error while disconnecting: %v", err)
-			return err
+			return nil
 		}
 	}
 	c.Peers = nil
@@ -210,7 +218,7 @@ func (c *Client) OpenConnection(host string, connectingPort string) error {
 	// Do we already have a connection to this peer?
 	for _, p := range c.Peers {
 		if p.Host == host && p.Port == connectingPort {
-			// We already have the peer
+			log.Printf("We already have peer \"%s:%s\" in our list", host, connectingPort)
 			return nil
 		}
 	}
@@ -227,7 +235,8 @@ func (c *Client) OpenConnection(host string, connectingPort string) error {
 	log.Printf("Successfully peered with node-%s\n", connectingPort)
 	anchorPeer.Conn = client
 
-	c.Peers = append(c.Peers, anchorPeer)
+	tempPeers := append(c.Peers, anchorPeer)
+	c.Peers = tempPeers
 
 	return nil
 }
@@ -269,7 +278,9 @@ func (c *Client) HandleUiMessage(msg node.Message) error {
 		err := conn.Conn.Call("NodeRPC.DeliverMessage", message, &reply)
 		if err != nil {
 			log.Printf("Error while delivering message: %v", err)
-			return err
+			log.Printf("Closing connection")
+			c.CloseConnection(conn.Port)
+			return nil
 		}
 	}
 	return nil
@@ -299,7 +310,9 @@ func (c *Client) StartMessageLoop() error {
 				err := peer.Conn.Call("NodeRPC.DeliverMessage", message, &reply)
 				if err != nil {
 					log.Printf("Error while trying to deliver message: %v", err)
-					return fmt.Errorf("Error while trying to deliver message: %v", err)
+					log.Printf("Closing connection")
+					c.CloseConnection(peer.Port)
+					return nil
 				}
 
 			}
@@ -310,6 +323,29 @@ func (c *Client) StartMessageLoop() error {
 	}
 
 	return nil
+}
+
+func (c *Client) GetAnchorBlock() ([]node.Block, error) {
+	if len(c.Peers) > 0 {
+		if c.Peers[0].Conn != nil {
+			var reply brpc.BlocksRPC
+
+			if c.Peers[0].Conn == nil {
+				log.Println("Error: Peer's connection is nil")
+				return nil, fmt.Errorf("Error: Peer's connection is nil")
+			}
+			err := c.Peers[0].Conn.Call("NodeRPC.GetBlocks", nil, &reply)
+			if err != nil {
+				log.Printf("Error while trying getting blocks: %v", err)
+				log.Printf("Closing connection")
+				c.CloseConnection(c.Peers[0].Port)
+				return nil, nil
+			}
+			return reply.Blocks, nil
+		}
+		return nil, fmt.Errorf("no open connection with peer")
+	}
+	return nil, fmt.Errorf("there are no peer available to give a block")
 }
 
 func (c *Client) ParseBlock(block node.Block) error {

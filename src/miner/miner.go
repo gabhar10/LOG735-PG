@@ -116,12 +116,17 @@ func (m *Miner) Peer() error {
 		}
 		args := &brpc.ConnectionRPC{PeerID: peer.Port}
 		var reply brpc.BlocksRPC
-
 		err = client.Call("NodeRPC.Peer", args, &reply)
 		if err != nil {
 			log.Printf("Error while peering: %v", err)
 			return err
 		}
+
+		// Take longest chain
+		if len(reply.Blocks) > len(m.blocks) {
+			m.blocks = reply.Blocks
+		}
+
 		peer.Conn = client
 		log.Printf("Successfully peered with node-%s\n", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
 	}
@@ -157,7 +162,9 @@ func (m *Miner) BroadcastBlock(b node.Block) error {
 		log.Printf("Sent block to peer %s", peer.Port)
 		if err != nil {
 			log.Printf("Error while delivering block: %v", err)
-			return err
+			log.Printf("Closing connection")
+			m.CloseConnection(peer.Port)
+			return nil
 		}
 	}
 	return nil
@@ -195,7 +202,9 @@ func (m *Miner) Broadcast(message node.Message) error {
 		err := peer.Conn.Call("NodeRPC.DeliverMessage", &args, &reply)
 		if err != nil {
 			log.Printf("Error while delivering message: %v", err)
-			return err
+			log.Printf("Closing connection")
+			m.CloseConnection(peer.Port)
+			return nil
 		}
 	}
 	return nil
@@ -437,7 +446,7 @@ func (m *Miner) OpenConnection(host string, connectingPort string) error {
 	// Do we already have a connection to this peer?
 	for _, p := range m.Peers {
 		if p.Host == host && p.Port == connectingPort {
-			// We already have the peer
+			log.Printf("We already have peer \"%s:%s\" in our list", host, connectingPort)
 			return nil
 		}
 	}
@@ -454,8 +463,8 @@ func (m *Miner) OpenConnection(host string, connectingPort string) error {
 	log.Printf("Successfully peered with node-%s\n", connectingPort)
 	anchorPeer.Conn = client
 
-	m.Peers = append(m.Peers, anchorPeer)
-
+	tempPeers := append(m.Peers, anchorPeer)
+	m.Peers = tempPeers
 	return nil
 }
 
