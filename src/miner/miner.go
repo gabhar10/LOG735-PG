@@ -108,6 +108,7 @@ func (m *Miner) Peer() error {
 	log.Printf("Miner-%s::Entering Peer()", m.ID)
 	defer log.Printf("Miner-%s::Leaving Peer()", m.ID)
 
+	var newChain bool
 	for _, peer := range m.Peers {
 		client, err := brpc.ConnectTo(*peer)
 		if err != nil {
@@ -122,15 +123,44 @@ func (m *Miner) Peer() error {
 			return err
 		}
 
-		// Take longest chain
+		// Take longest valid chain
 		if len(reply.Blocks) > len(m.blocks) {
-			m.blocks = reply.Blocks
-		}
+			// Iterate over new chain.
+			var invalid bool
+			for i := len(reply.Blocks) - 1; i > 0; i-- {
+				if reply.Blocks[i-1].Header.Hash != reply.Blocks[i].Header.PreviousBlock {
+					invalid = true
+					break
+				}
+			}
 
+			if !invalid {
+				log.Println("Incoming blockchain is valid!")
+				m.blocks = reply.Blocks
+				newChain = true
+			}
+		} else if len(m.blocks) > 0 && len(reply.Blocks) == len(m.blocks) {
+			log.Println("Received chain is as large as mine")
+			if reply.Blocks[len(reply.Blocks)-1].Header.Nounce > m.blocks[len(m.blocks)-1].Header.Nounce {
+				log.Printf("Mine has higher nounce: %d > %d", m.blocks[len(m.blocks)-1].Header.Nounce, reply.Blocks[len(reply.Blocks)-1].Header.Nounce)
+			} else {
+				log.Printf("Incoming block has higher nounce, making it my main chain: %d > %d", reply.Blocks[len(reply.Blocks)-1].Header.Nounce, m.blocks[len(m.blocks)-1].Header.Nounce)
+				m.blocks = reply.Blocks
+				newChain = true
+			}
+		}
 		peer.Conn = client
 		log.Printf("Successfully peered with node-%s\n", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
 	}
-
+	if newChain {
+		for _, b := range m.blocks {
+			err := m.BroadcastBlock(b)
+			if err != nil {
+				log.Printf("Error while broadcasting newly received blockchain")
+				return err
+			}
+		}
+	}
 	return nil
 }
 
@@ -322,7 +352,7 @@ func (m *Miner) ReceiveBlock(block node.Block, peer string) error {
 			log.Printf("Locking mutex")
 			m.mutex.Lock()
 			log.Printf("Locked mutex")
-			log.Println("Received block's hash is valid! Stopping current mining operation.")
+			log.Println("Received block's hash is valid!")
 		} else {
 			log.Println("Received block's hash is not valid! Discarding block")
 			return nil
@@ -336,7 +366,7 @@ func (m *Miner) ReceiveBlock(block node.Block, peer string) error {
 
 	m.clearProcessedMessages(&block)
 
-	log.Printf("Sending quit message")
+	log.Printf("Stopping current mining operation. Quit")
 	m.quit <- true
 	log.Printf("Sent quit message")
 	// Malicious nodes do not broadcast new valid blocks
