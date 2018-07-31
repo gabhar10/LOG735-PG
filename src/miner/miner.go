@@ -24,6 +24,7 @@ type Miner struct {
 	incomingBlockChan chan node.Block   // Channel for incoming blocks from other miners
 	quit              chan bool         // Channel to cancel mining operations
 	mutex             *sync.Mutex       // Mutex for synchronization between routines
+	startMiningMutex  *sync.Mutex
 	waitingList       []node.Message
 }
 
@@ -41,6 +42,7 @@ func NewMiner(port string, peers []*node.Peer) node.Node {
 		make(chan node.Block, node.BlocksChannelSize),
 		make(chan bool, 1),
 		&sync.Mutex{},
+		&sync.Mutex{},
 		[]node.Message{},
 	}
 	m.rpcHandler.Node = m
@@ -52,23 +54,26 @@ func (m *Miner) Start() {
 	defer log.Printf("Miner-%s::Leaving Start()", m.ID)
 
 	go func() {
-		block, err := m.mining()
-		if err != nil {
-			log.Printf("Error while mining: %v", err)
-			return
+		for {
+			log.Println("Locking startMiningMutex")
+			m.startMiningMutex.Lock()
+			block, err := m.mining()
+			// Check if Quit was called
+			if block == (node.Block{}) && err == nil {
+				continue
+			} else if err != nil {
+				log.Printf("Error while mining: %v", err)
+				return
+			}
+
+			m.blocks = append(m.blocks, block)
+			m.BroadcastBlock(block)
+			m.mutex.Lock()
+			log.Println("Locking mutex")
+			m.clearProcessedMessages(&block)
+			m.mutex.Unlock()
+			log.Println("Unlocking mutex")
 		}
-		//m.miningBlock = &block
-
-		//MINEUR-06
-
-		m.blocks = append(m.blocks, block)
-
-		m.BroadcastBlock(block)
-		m.mutex.Lock()
-		log.Println("Locking mutex")
-		m.clearProcessedMessages(&block)
-		m.mutex.Unlock()
-		log.Println("Unlocking mutex")
 	}()
 }
 
@@ -287,8 +292,9 @@ func (m *Miner) ReceiveBlock(block node.Block) error {
 		firstCharacters := string(hash[:node.MiningDifficulty])
 		if strings.Count(firstCharacters, "0") == node.MiningDifficulty && hash == block.Header.Hash {
 			log.Println("Received block's hash is valid! Stopping current mining operation.")
+			m.startMiningMutex.Lock()
+			defer m.startMiningMutex.Unlock()
 			m.quit <- false
-			// MINEUR-05
 		} else {
 			log.Println("Received block's hash is not valid! Discarding block")
 			return nil
@@ -317,15 +323,16 @@ func (m *Miner) ReceiveBlock(block node.Block) error {
 	// TODO: Use mutex?
 	tempBlocks := append(m.blocks, block)
 	m.blocks = tempBlocks
-
-	//m.Start()
-
 	return nil
 }
 
 func (m *Miner) mining() (node.Block, error) {
 	log.Printf("Miner-%s::Entering mining()", m.ID)
 	defer log.Printf("Miner-%s::Leaving mining()", m.ID)
+
+	// This method should only be called via Start()
+	log.Println("Unlocking startMiningMutex")
+	m.startMiningMutex.Unlock()
 
 	select {
 	case <-m.quit:

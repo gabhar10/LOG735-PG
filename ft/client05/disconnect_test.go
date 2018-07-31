@@ -13,7 +13,7 @@ func TestClient05(t *testing.T) {
 	const ClientID = "8889"
 	const TestContent = "This is a test"
 
-	t.Run("Send message to miner", func(t *testing.T) {
+	t.Run("L’application client doit permettre à l’utilisateur de se déconnecter", func(t *testing.T) {
 		// Create miner
 		minerPeers := []*node.Peer{
 			&node.Peer{
