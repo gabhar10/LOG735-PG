@@ -12,6 +12,7 @@ import (
 )
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	// Check for empty environment variables
 	for _, role := range []string{"ROLE", "PORT", "PEERS"} {
 		env := os.Getenv(role)

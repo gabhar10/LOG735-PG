@@ -1,10 +1,10 @@
 package client02
 
 import (
-	"testing"
-	"LOG735-PG/src/node"
-	"LOG735-PG/src/miner"
 	"LOG735-PG/src/client"
+	"LOG735-PG/src/miner"
+	"LOG735-PG/src/node"
+	"testing"
 	"time"
 )
 
@@ -48,8 +48,6 @@ func TestClient02_getBlock(t *testing.T) {
 		c2 := client.NewClient(Localhost, ClientID2, clientPeers, uiChan2, nil).(*client.Client)
 		m := miner.NewMiner(MinerID, minerPeers).(*miner.Miner)
 
-
-
 		err := m.SetupRPC()
 		if err != nil {
 			t.Errorf("Miner could not setup RPC: %v", err)
@@ -76,11 +74,11 @@ func TestClient02_getBlock(t *testing.T) {
 			t.Errorf("Error while peering the miner to the client: %v", err)
 		}
 
-		c1.HandleUiMessage( node.Message{Content:TestContent1, Peer:c1.ID, Time:time.Now().Format(time.RFC3339Nano)})
-		c2.HandleUiMessage( node.Message{Content:TestContent2, Peer:c2.ID, Time:time.Now().Format(time.RFC3339Nano)})
-		c2.HandleUiMessage( node.Message{Content:TestContent3, Peer:c2.ID, Time:time.Now().Format(time.RFC3339Nano)})
-		c1.HandleUiMessage( node.Message{Content:TestContent4, Peer:c1.ID, Time:time.Now().Format(time.RFC3339Nano)})
-		c2.HandleUiMessage( node.Message{Content:TestContent5, Peer:c2.ID, Time:time.Now().Format(time.RFC3339Nano)})
+		c1.HandleUiMessage(node.Message{Content: TestContent1, Peer: c1.ID, Time: time.Now().Format(time.RFC3339Nano)})
+		c2.HandleUiMessage(node.Message{Content: TestContent2, Peer: c2.ID, Time: time.Now().Format(time.RFC3339Nano)})
+		c2.HandleUiMessage(node.Message{Content: TestContent3, Peer: c2.ID, Time: time.Now().Format(time.RFC3339Nano)})
+		c1.HandleUiMessage(node.Message{Content: TestContent4, Peer: c1.ID, Time: time.Now().Format(time.RFC3339Nano)})
+		c2.HandleUiMessage(node.Message{Content: TestContent5, Peer: c2.ID, Time: time.Now().Format(time.RFC3339Nano)})
 
 		received := false
 		for i := 0; i < 5; i++ {
@@ -102,7 +100,7 @@ func TestClient02_getBlock(t *testing.T) {
 		}
 
 		// Check message client 1 received
-		msg := <- uiChan1
+		msg := <-uiChan1
 		if msg.Content != TestContent1 || msg.Peer != c1.ID {
 			t.Errorf("Message not in order; should be %s from %s; Was %s from %s",
 				TestContent1,
@@ -110,7 +108,7 @@ func TestClient02_getBlock(t *testing.T) {
 				msg.Content,
 				msg.Peer)
 		}
-		msg = <- uiChan1
+		msg = <-uiChan1
 		if msg.Content != TestContent2 || msg.Peer != c2.ID {
 			t.Errorf("Message not in order; should be %s from %s; Was %s from %s",
 				TestContent2,
@@ -118,7 +116,7 @@ func TestClient02_getBlock(t *testing.T) {
 				msg.Content,
 				msg.Peer)
 		}
-		msg = <- uiChan1
+		msg = <-uiChan1
 		if msg.Content != TestContent3 || msg.Peer != c2.ID {
 			t.Errorf("Message not in order; should be %s from %s; Was %s from %s",
 				TestContent3,
@@ -126,7 +124,7 @@ func TestClient02_getBlock(t *testing.T) {
 				msg.Content,
 				msg.Peer)
 		}
-		msg = <- uiChan1
+		msg = <-uiChan1
 		if msg.Content != TestContent4 || msg.Peer != c1.ID {
 			t.Errorf("Message not in order; should be %s from %s; Was %s from %s",
 				TestContent4,
@@ -134,8 +132,8 @@ func TestClient02_getBlock(t *testing.T) {
 				msg.Content,
 				msg.Peer)
 		}
-		msg = <- uiChan1
-		if msg.Content != TestContent5|| msg.Peer != c2.ID {
+		msg = <-uiChan1
+		if msg.Content != TestContent5 || msg.Peer != c2.ID {
 			t.Errorf("Message not in order; should be %s from %s; Was %s from %s",
 				TestContent5,
 				ClientID2,
@@ -144,7 +142,7 @@ func TestClient02_getBlock(t *testing.T) {
 		}
 
 		// Check message client 2 received
-		msg = <- uiChan2
+		msg = <-uiChan2
 		if msg.Content != TestContent1 || msg.Peer != c1.ID {
 			t.Errorf("Message not in order; should be %s from %s; Was %s from %s",
 				TestContent1,
@@ -152,7 +150,7 @@ func TestClient02_getBlock(t *testing.T) {
 				msg.Content,
 				msg.Peer)
 		}
-		msg = <- uiChan2
+		msg = <-uiChan2
 		if msg.Content != TestContent2 || msg.Peer != c2.ID {
 			t.Errorf("Message not in order; should be %s from %s; Was %s from %s",
 				TestContent2,
@@ -160,7 +158,7 @@ func TestClient02_getBlock(t *testing.T) {
 				msg.Content,
 				msg.Peer)
 		}
-		msg = <- uiChan2
+		msg = <-uiChan2
 		if msg.Content != TestContent3 || msg.Peer != c2.ID {
 			t.Errorf("Message not in order; should be %s from %s; Was %s from %s",
 				TestContent3,
@@ -168,7 +166,7 @@ func TestClient02_getBlock(t *testing.T) {
 				msg.Content,
 				msg.Peer)
 		}
-		msg = <- uiChan2
+		msg = <-uiChan2
 		if msg.Content != TestContent4 || msg.Peer != c1.ID {
 			t.Errorf("Message not in order; should be %s from %s; Was %s from %s",
 				TestContent4,
@@ -176,7 +174,7 @@ func TestClient02_getBlock(t *testing.T) {
 				msg.Content,
 				msg.Peer)
 		}
-		msg = <- uiChan2
+		msg = <-uiChan2
 		if msg.Content != TestContent5 || msg.Peer != c2.ID {
 			t.Errorf("Message not in order; should be %s from %s; Was %s from %s",
 				TestContent5,
@@ -189,7 +187,7 @@ func TestClient02_getBlock(t *testing.T) {
 		c3 := client.NewClient(Localhost, ClientID3, clientPeers, uiChan3, nil).(*client.Client)
 		c3.Connect(Localhost, MinerID)
 
-		msg = <- uiChan3
+		msg = <-uiChan3
 		if msg.Content != TestContent1 || msg.Peer != c1.ID {
 			t.Errorf("Message not in order; should be %s from %s; Was %s from %s",
 				TestContent1,
@@ -197,7 +195,7 @@ func TestClient02_getBlock(t *testing.T) {
 				msg.Content,
 				msg.Peer)
 		}
-		msg = <- uiChan3
+		msg = <-uiChan3
 		if msg.Content != TestContent2 || msg.Peer != c2.ID {
 			t.Errorf("Message not in order; should be %s from %s; Was %s from %s",
 				TestContent2,
@@ -205,7 +203,7 @@ func TestClient02_getBlock(t *testing.T) {
 				msg.Content,
 				msg.Peer)
 		}
-		msg = <- uiChan3
+		msg = <-uiChan3
 		if msg.Content != TestContent3 || msg.Peer != c2.ID {
 			t.Errorf("Message not in order; should be %s from %s; Was %s from %s",
 				TestContent3,
@@ -213,7 +211,7 @@ func TestClient02_getBlock(t *testing.T) {
 				msg.Content,
 				msg.Peer)
 		}
-		msg = <- uiChan3
+		msg = <-uiChan3
 		if msg.Content != TestContent4 || msg.Peer != c1.ID {
 			t.Errorf("Message not in order; should be %s from %s; Was %s from %s",
 				TestContent4,
@@ -221,7 +219,7 @@ func TestClient02_getBlock(t *testing.T) {
 				msg.Content,
 				msg.Peer)
 		}
-		msg = <- uiChan3
+		msg = <-uiChan3
 		if msg.Content != TestContent5 || msg.Peer != c2.ID {
 			t.Errorf("Message not in order; should be %s from %s; Was %s from %s",
 				TestContent5,

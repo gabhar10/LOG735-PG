@@ -551,7 +551,7 @@ func TestMiner_ReceiveBlock(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := NewMiner(tt.fields.ID, tt.fields.peers)
-			if err := m.ReceiveBlock(tt.args.block); (err != nil) != tt.wantErr {
+			if err := m.ReceiveBlock(tt.args.block, tt.fields.ID); (err != nil) != tt.wantErr {
 				t.Errorf("Miner.ReceiveBlock() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -782,6 +782,7 @@ func TestMiner_clearProcessedMessages(t *testing.T) {
 		incomingBlockChan chan node.Block
 		quit              chan bool
 		mutex             *sync.Mutex
+		startMiningMutex  *sync.Mutex
 		waitingList       []node.Message
 	}
 	type args struct {
@@ -803,6 +804,7 @@ func TestMiner_clearProcessedMessages(t *testing.T) {
 			fields: fields{
 				ID:          "123",
 				peers:       []*node.Peer{},
+				mutex:       &sync.Mutex{},
 				waitingList: commonMessages,
 			},
 			args: args{
@@ -842,6 +844,7 @@ func TestMiner_clearProcessedMessages(t *testing.T) {
 				incomingBlockChan: tt.fields.incomingBlockChan,
 				quit:              tt.fields.quit,
 				mutex:             tt.fields.mutex,
+				startMiningMutex:  tt.fields.startMiningMutex,
 				waitingList:       tt.fields.waitingList,
 			}
 			m.clearProcessedMessages(tt.args.block)

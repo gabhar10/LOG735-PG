@@ -139,7 +139,6 @@ func (c *Client) Connect(host string, anchorPort string) error {
 		return err
 	}
 
-
 	var replyBlock brpc.BlocksRPC
 	var sendBlock brpc.GetBlocksRPC
 
@@ -149,7 +148,7 @@ func (c *Client) Connect(host string, anchorPort string) error {
 		c.Peers = nil
 		return err
 	}
-	for _, block := range replyBlock.Blocks{
+	for _, block := range replyBlock.Blocks {
 		c.ParseBlock(block)
 	}
 	// Restart Message Loop
@@ -333,11 +332,11 @@ func (c *Client) BroadcastBlock(b node.Block) error {
 	return nil
 }
 
-func (c *Client) ReceiveBlock(block node.Block) error {
+func (c *Client) ReceiveBlock(block node.Block, peer string) error {
 	log.Printf("Client-%s::Entering ReceiveBlock()", c.ID)
 	defer log.Printf("Client-%s::Leaving ReceiveBlock()", c.ID)
 
-	log.Printf("Block header hash: %v, Block header nounce: %v, Block header date: %v", block.Header.Hash, block.Header.Nounce, block.Header.Date)
+	log.Printf("Received block %v from \"%s\"", block, peer)
 	// Do we already have this block in the chain?
 	for _, b := range c.blocks {
 		if reflect.DeepEqual(b, block) {
