@@ -396,7 +396,7 @@ func TestMiner_Broadcast(t *testing.T) {
 		{
 			name: "Sunny day",
 			fields: fields{
-				ID: "8000",
+				ID: "9010",
 				peers: func() []*node.Peer {
 					driver := node.Peer{Host: "127.0.0.1", Port: "9010"}
 					m := NewMiner("9003", []*node.Peer{&driver}).(*Miner)
@@ -404,6 +404,7 @@ func TestMiner_Broadcast(t *testing.T) {
 					if err != nil {
 						t.Errorf("Error while trying to setup RPC: %v", err)
 					}
+					go m.Peer()
 					return []*node.Peer{&node.Peer{Host: "127.0.0.1", Port: "9003"}}
 				}(),
 				mutex: new(sync.Mutex),
@@ -420,7 +421,11 @@ func TestMiner_Broadcast(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := NewMiner(tt.fields.ID, tt.fields.peers).(*Miner)
-			err := m.Peer()
+			err := m.SetupRPC()
+			if err != nil {
+				t.Errorf("Error while setting up RPC: %v", err)
+			}
+			err = m.Peer()
 			if err != nil {
 				t.Errorf("Error while peering: %v", err)
 			}

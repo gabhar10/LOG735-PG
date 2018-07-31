@@ -186,10 +186,6 @@ func (m *Miner) Broadcast(message node.Message) error {
 			Time:          message.Time}
 		var reply *int
 
-		if peer.Conn == nil {
-			log.Println("Error: Peer's connection is nil")
-			return fmt.Errorf("Error: Peer's connection is nil")
-		}
 		err := peer.Conn.Call("NodeRPC.DeliverMessage", &args, &reply)
 		if err != nil {
 			log.Printf("Error while delivering message: %v", err)
@@ -317,12 +313,10 @@ func (m *Miner) ReceiveBlock(block node.Block, peer string) error {
 		return nil
 	}
 
-	//TODO: add timestamp gap checking between messages
-
 	//on enleve les messages du bloc valide qui sont dans le bloc quon etait en train de miner
 
 	m.clearProcessedMessages(&block)
-	m.mutex.Unlock()
+	m.quit <- true
 	// Malicious nodes do not broadcast new valid blocks
 	if !m.malicious {
 		err := m.BroadcastBlock(block)
