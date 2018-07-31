@@ -33,7 +33,7 @@ if args.num_mal_miners >= args.num_miners:
 while len(USED_PORTS) < ANCHOR_PEERS:
     anchor_port=random.randrange(MIN_PORT, MAX_PORT)
     if anchor_port not in USED_PORTS:
-        node = {'ID': 'AM%d' % anchor_port, 'port': anchor_port, 'role': 'anchor-miner', 'peers': []}
+        node = {'ID': 'AM%d' % anchor_port, 'port': anchor_port, 'role': 'anchor-miner', 'malicious': False, 'peers': []}
         ANCHOR_MINERS.append(node)
         USED_PORTS.append(anchor_port)
 
@@ -75,8 +75,31 @@ for i in CLIENTS:
     am['peers'].append(i['port']) # Bidirectional relationship
 
 # Randomly select malicious miners
-for i in random.sample(MINERS, args.num_mal_miners):
+for i in random.sample(MINERS+ANCHOR_MINERS, args.num_mal_miners):
     i['malicious'] = True
+
+# Connect clients to non malicious miner if they are tied to one
+for i in CLIENTS:
+    for j in i['peers']:
+        # j is a port
+        peer = None
+        # Find peer entity
+        for h in MINERS+ANCHOR_MINERS:
+            if h['port'] == j:
+                peer = h
+                break
+        if peer['malicious'] == False:
+            break
+        # Find another peer that isn't malicious
+        newPeer = None
+        while True:
+            miner = random.choice(MINERS+ANCHOR_MINERS)
+            if miner['malicious'] == False:
+                newPeer = miner
+                break
+        i['peers'].append(newPeer['port'])
+        newPeer['peers'].append(i['port'])
+        break   
 
 # Create all docker-compose client services and vis.js content
 services = ''
@@ -94,16 +117,16 @@ for i in CLIENTS:
 
 for i in ANCHOR_MINERS:
     services += '%s:\n  image: log735:latest\n  container_name: node-%s\n  environment:\n\
-    - PEERS=%s\n    - ROLE=miner\n    - PORT=%s\n  networks:\n    - blockchain\n' \
-                % (i['ID'], i['port'], " ".join(str(x) for x in i['peers']), i['port'])
+    - PEERS=%s\n    - ROLE=miner\n    - PORT=%s\n    - MALICIOUS=%s\n  networks:\n    - blockchain\n' \
+                % (i['ID'], i['port'], " ".join(str(x) for x in i['peers']), i['port'], i['malicious'])
     visjs_vertices += '        {id: %s, label: \'%s\'},\n' % (i['port'], i['ID'])
     for x in i['peers']:
         visjs_edges += '        {from: %s, to: %s},\n' % (i['port'], x)
 
 for i in MINERS:
     services += '%s:\n  image: log735:latest\n  container_name: node-%s\n  environment:\n\
-    - PEERS=%s\n    - ROLE=miner\n    - PORT=%s\n  networks:\n    - blockchain\n' \
-                % (i['ID'], i['port'], " ".join(str(x) for x in i['peers']), i['port'])
+    - PEERS=%s\n    - ROLE=miner\n    - PORT=%s\n    - MALICIOUS=%s\n  networks:\n    - blockchain\n' \
+                % (i['ID'], i['port'], " ".join(str(x) for x in i['peers']), i['port'], i['malicious'])
     visjs_vertices += '        {id: %s, label: \'%s\'},\n' % (i['port'], i['ID'])
     for x in i['peers']:
         visjs_edges += '        {from: %s, to: %s},\n' % (i['port'], x)

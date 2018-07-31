@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"net/rpc"
+	"os"
 	"reflect"
 	"strings"
 	"sync"
@@ -26,6 +27,7 @@ type Miner struct {
 	mutex             *sync.Mutex       // Mutex for synchronization between routines
 	startMiningMutex  *sync.Mutex
 	waitingList       []node.Message
+	malicious         bool
 }
 
 func NewMiner(port string, peers []*node.Peer) node.Node {
@@ -44,7 +46,9 @@ func NewMiner(port string, peers []*node.Peer) node.Node {
 		&sync.Mutex{},
 		&sync.Mutex{},
 		[]node.Message{},
+		strings.Contains(strings.ToLower(os.Getenv("MALICIOUS")), "true"),
 	}
+	log.Printf("Malicious: %v", m.malicious)
 	m.rpcHandler.Node = m
 	return m
 }
@@ -218,7 +222,14 @@ func (m *Miner) ReceiveMessage(content, temps, peer string, messageType int) err
 	log.Printf("Miner-%s::Entering ReceiveMessage()", m.ID)
 	defer log.Printf("Miner-%s::Leaving ReceiveMessage()", m.ID)
 
-	//MINEUR-04
+	// If malicious miner, alternate content of received messages
+	if m.malicious {
+		contentByte := []byte(content)
+		for i := 0; i < len(contentByte); i++ {
+			contentByte[i]++
+		}
+		content = string(contentByte)
+	}
 
 	// Check if we don't alrady have the message in the waiting list
 	msg := node.Message{
@@ -299,10 +310,8 @@ func (m *Miner) ReceiveBlock(block node.Block) error {
 			log.Println("Received block's hash is not valid! Discarding block")
 			return nil
 		}
-
 	} else {
-		log.Println("Block does not exist in my chain! Ask my peers for the missing range of blocks")
-		// TODO: Implement fetching range of blocks from peers
+		log.Println("Block does not exist in my chain! Discard")
 		return nil
 	}
 
@@ -313,10 +322,13 @@ func (m *Miner) ReceiveBlock(block node.Block) error {
 	m.mutex.Lock()
 	m.clearProcessedMessages(&block)
 	m.mutex.Unlock()
-	err := m.BroadcastBlock(block)
-	if err != nil {
-		log.Printf("Error while broadcasting block: %v", err)
-		return err
+	// Malicious nodes do not broadcast new valid blocks
+	if !m.malicious {
+		err := m.BroadcastBlock(block)
+		if err != nil {
+			log.Printf("Error while broadcasting block: %v", err)
+			return err
+		}
 	}
 
 	log.Println("Appending block to the chain")
@@ -376,7 +388,11 @@ findingNounce:
 			}
 			nounce++
 		}
+		if m.malicious {
+			time.Sleep(time.Nanosecond * 6000)
+		}
 	}
+	log.Printf("Took %d tries to find nounce", nounce)
 	return hashedHeader, nil
 }
 
