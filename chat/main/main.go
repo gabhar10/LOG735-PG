@@ -43,7 +43,7 @@ func main() {
 
 
 	var traffic = false
-	if os.Getenv("TRAFFIC") == "True" {
+	if os.Getenv("TRAFFIC") == "1" {
 		traffic = true
 	}
 

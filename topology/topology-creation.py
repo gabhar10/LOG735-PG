@@ -19,10 +19,8 @@ parser.add_argument('--clients', dest='num_clients', help='total number of clien
 parser.add_argument('--malicious-miners', dest='num_mal_miners', help='total number of malicious miners in the network',
                     type=int, required=True)
 parser.add_argument('--traffic', dest='traffic', help='indicates if trafic generation is on or off',
-					type=bool, required=True)
+					type=int, required=True)
 args = parser.parse_args()
-
-print("Traffic is %r", args.traffic)
 
 # Sanity check for minimal amount of anchor-miners and number of malicious miners
 if args.num_miners < ANCHOR_PEERS:
@@ -112,7 +110,7 @@ visjs_edges = ''
 ui_port_counter = 8000
 for i in CLIENTS:
     services += '%s:\n  image: log735-chat:latest\n  container_name: node-%s\n  environment:\n\
-    - PEERS=%s\n    - TRAFFIC=%r\n    - ROLE=client\n    - PORT=%s\n  ports:\n    - \'%s:8000\'\n  networks:\n    - blockchain\n' \
+    - PEERS=%s\n    - TRAFFIC=%s\n    - ROLE=client\n    - PORT=%s\n  ports:\n    - \'%s:8000\'\n  networks:\n    - blockchain\n' \
                 % (i['ID'], i['port'], " ".join(str(x) for x in i['peers']), args.traffic, i['port'], ui_port_counter)
     visjs_vertices += '        {id: %s, label: \'%s\'},\n' % (i['port'], i['ID'])
     ui_port_counter += 1
