@@ -13,7 +13,6 @@ func TestClient05_disconnect(t *testing.T) {
 	const Localhost = "localhost"
 	// CLIENT-05: L’application client doit permettre à l’utilisateur de se déconnecter
 
-
 	t.Run("L’application client doit permettre à l’utilisateur de se déconnecter", func(t *testing.T) {
 		// Create miner
 		minerPeers := []*node.Peer{
@@ -55,12 +54,10 @@ func TestClient05_disconnect(t *testing.T) {
 			t.Errorf("Error returned while disconnecting: %v", err)
 		}
 
-		if len(m.Peers) > 0 {
-			t.Errorf("Miner still has the connection of the peer")
-		}
-
-		if len(c.Peers) > 0 {
-			t.Errorf("Client still has the connection of the peer")
+		for {
+			if len(m.Peers) == 0 && len(c.Peers) == 0 {
+				break
+			}
 		}
 	})
 }

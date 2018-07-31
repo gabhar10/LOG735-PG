@@ -15,11 +15,11 @@ import (
 
 const HttpPort = ":8000"
 
-var clients = make(map[*websocket.Conn]bool) // Websocket Slice for exchange between server and web application
-var uiChannel = make(chan node.Message, node.BlockSize)      // Channel for incoming message from Client Node
-var nodeChannel = make(chan node.Message)    // Channel for outgoing message from web application
-var upgrader = websocket.Upgrader{}          // Used to upgrade HTTP connection to websocket
-var clientNode node.Node                     // Server's client nod reference
+var clients = make(map[*websocket.Conn]bool)            // Websocket Slice for exchange between server and web application
+var uiChannel = make(chan node.Message, node.BlockSize) // Channel for incoming message from Client Node
+var nodeChannel = make(chan node.Message)               // Channel for outgoing message from web application
+var upgrader = websocket.Upgrader{}                     // Used to upgrade HTTP connection to websocket
+var clientNode node.Node                                // Server's client nod reference
 
 type Message struct {
 	Peer    string `json:"peer"`
@@ -28,6 +28,7 @@ type Message struct {
 
 // Create client node and wait for connection from port 8000
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	log.Printf("My peers are %v", os.Getenv("PEERS"))
 	peers := []*node.Peer{}
 	for _, s := range strings.Split(os.Getenv("PEERS"), " ") {

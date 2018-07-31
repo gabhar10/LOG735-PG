@@ -2,6 +2,8 @@ package rpc
 
 import (
 	"LOG735-PG/src/node"
+	"flag"
+	"fmt"
 )
 
 type NodeRPC struct {
@@ -22,9 +24,16 @@ func (n *NodeRPC) Peer(args *ConnectionRPC, reply *BlocksRPC) error {
 	// Mutate blocks ...
 	reply.Blocks = n.Node.GetBlocks()
 
-	// Broadcast to all peers presence of new peer
-	// MINEUR-08
-	return nil
+	var host string
+	if flag.Lookup("test.v") == nil {
+		// We are not in a test
+		host = fmt.Sprintf("node-%s", args.PeerID)
+	} else {
+		host = "127.0.0.1"
+	}
+
+	// Force bidirectional peering
+	return n.Node.OpenConnection(host, args.PeerID)
 }
 
 func (n *NodeRPC) DeliverMessage(args *MessageRPC, reply *int) error {
