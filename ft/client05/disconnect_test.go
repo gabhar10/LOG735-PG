@@ -13,7 +13,8 @@ func TestClient05_disconnect(t *testing.T) {
 	const Localhost = "localhost"
 	// CLIENT-05: L’application client doit permettre à l’utilisateur de se déconnecter
 
-	t.Run("Client disconnect from miner", func(t *testing.T) {
+
+	t.Run("L’application client doit permettre à l’utilisateur de se déconnecter", func(t *testing.T) {
 		// Create miner
 		minerPeers := []*node.Peer{
 			&node.Peer{

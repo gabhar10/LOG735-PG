@@ -19,7 +19,7 @@ func TestMiner04(t *testing.T) {
 	const TestContent3 = "This is a test from Client2"
 	const TestContent4 = "This is a another test from Client2"
 
-	t.Run("Send message to miner", func(t *testing.T) {
+	t.Run("Un mineur doit respecter l’ordre chronologique de l’envoi des messages par les clients lors de la création de blocs.", func(t *testing.T) {
 		// Create miner
 		minerPeers := []*node.Peer{
 			&node.Peer{
