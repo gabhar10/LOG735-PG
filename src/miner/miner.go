@@ -364,7 +364,7 @@ findingNounce:
 		select {
 		case <-m.quit:
 			log.Println("Quitting!")
-			return [sha256.Size]byte{}, fmt.Errorf("Quit")
+			return [sha256.Size]byte{}, nil
 		default:
 			block.Header.Nounce = nounce
 			hashedHeader = sha256.Sum256([]byte(fmt.Sprintf("%v", block.Header)))
