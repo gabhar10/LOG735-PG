@@ -34,7 +34,7 @@ func TestClient05_disconnect(t *testing.T) {
 		// Channel for communication
 		nodeChan := make(chan node.Message, 1)
 
-		c := client.NewClient(Localhost, ClientID, clientPeers, nil, nodeChan).(*client.Client)
+		c := client.NewClient(Localhost, ClientID, clientPeers, nil, nodeChan, false).(*client.Client)
 		err = c.Peer()
 		if err != nil {
 			t.Errorf("Error while peering: %v", err)

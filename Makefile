@@ -3,7 +3,7 @@ clean:
 	-docker rm -f log735-webapp
 	-rm -f webapp/docker-compose.logs
 build:
-	cd topology; python3 topology-creation.py --miners $(MINERS) --clients $(CLIENTS) --malicious-miners $(MMINERS)
+	cd topology; python3 topology-creation.py --miners $(MINERS) --clients $(CLIENTS) --malicious-miners $(MMINERS) --traffic $(TRAFFIC)
 	docker build -t log735:latest .
 	docker build -f Dockerfile_chat -t log735-chat:latest .
 	cd webapp; docker build -t log735-webapp:latest .

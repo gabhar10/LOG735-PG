@@ -44,8 +44,8 @@ func TestClient02_getBlock(t *testing.T) {
 
 		uiChan1 := make(chan node.Message, node.BlockSize)
 		uiChan2 := make(chan node.Message, node.BlockSize)
-		c1 := client.NewClient(Localhost, ClientID1, clientPeers, uiChan1, nil).(*client.Client)
-		c2 := client.NewClient(Localhost, ClientID2, clientPeers, uiChan2, nil).(*client.Client)
+		c1 := client.NewClient(Localhost, ClientID1, clientPeers, uiChan1, nil, false).(*client.Client)
+		c2 := client.NewClient(Localhost, ClientID2, clientPeers, uiChan2, nil, false).(*client.Client)
 		m := miner.NewMiner(MinerID, minerPeers).(*miner.Miner)
 
 		err := m.SetupRPC()
@@ -184,7 +184,7 @@ func TestClient02_getBlock(t *testing.T) {
 		}
 
 		uiChan3 := make(chan node.Message, node.BlockSize)
-		c3 := client.NewClient(Localhost, ClientID3, clientPeers, uiChan3, nil).(*client.Client)
+		c3 := client.NewClient(Localhost, ClientID3, clientPeers, uiChan3, nil, false).(*client.Client)
 		c3.Connect(Localhost, MinerID)
 
 		msg = <-uiChan3

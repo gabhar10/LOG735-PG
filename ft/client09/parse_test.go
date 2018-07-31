@@ -37,7 +37,7 @@ func TestClient09_parse(t *testing.T) {
 		}
 
 		uiChan := make(chan node.Message, node.BlockSize*2)
-		c := client.NewClient(Localhost, ClientID, clientPeers, uiChan, nil).(*client.Client)
+		c := client.NewClient(Localhost, ClientID, clientPeers, uiChan, nil, false).(*client.Client)
 
 		err := m.SetupRPC()
 		if err != nil {
