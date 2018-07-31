@@ -53,6 +53,12 @@ func (c *Client) Start() {
 	go c.StartMessageLoop()
 }
 
+func (c *Client) GetChain() {
+	for _, block := range c.blocks{
+		c.ParseBlock(block)
+	}
+}
+
 func (c *Client) SetupRPC() error {
 	log.Printf("Client-%s::Entering SetupRPC()", c.ID)
 	defer log.Printf("Client-%s::Leaving SetupRPC()", c.ID)
@@ -269,23 +275,6 @@ func (c *Client) StartMessageLoop() error {
 	}
 
 	return nil
-}
-
-func (c *Client) GetAnchorBlock() ([]node.Block, error) {
-	if len(c.Peers) > 0 {
-		if c.Peers[0].Conn != nil {
-			var reply brpc.BlocksRPC
-
-			if c.Peers[0].Conn == nil {
-				log.Println("Error: Peer's connection is nil")
-				return nil, fmt.Errorf("Error: Peer's connection is nil")
-			}
-			c.Peers[0].Conn.Call("NodeRPC.GetBlocks", nil, &reply)
-			return reply.Blocks, nil
-		}
-		return nil, fmt.Errorf("no open connection with peer")
-	}
-	return nil, fmt.Errorf("there are no peer available to give a block")
 }
 
 func (c *Client) ParseBlock(block node.Block) error {

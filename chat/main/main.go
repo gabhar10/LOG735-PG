@@ -19,7 +19,7 @@ var clients = make(map[*websocket.Conn]bool) // Websocket Slice for exchange bet
 var uiChannel = make(chan node.Message, node.BlockSize)      // Channel for incoming message from Client Node
 var nodeChannel = make(chan node.Message)    // Channel for outgoing message from web application
 var upgrader = websocket.Upgrader{}          // Used to upgrade HTTP connection to websocket
-var clientNode node.Node                     // Server's client nod reference
+var clientNode node.Node	                 // Server's client nod reference
 
 type Message struct {
 	Peer    string `json:"peer"`
@@ -38,6 +38,7 @@ func main() {
 	}
 
 	clientNode = client.NewClient(fmt.Sprintf("node-%s", os.Getenv("PORT")), os.Getenv("PORT"), peers, uiChannel, nodeChannel)
+
 	err := clientNode.SetupRPC()
 	if err != nil {
 		log.Fatal("RPC setup error:", err)
@@ -80,6 +81,10 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	defer ws.Close()
 	clients[ws] = true
 
+	var client = clientNode.(*client.Client)
+
+	client.GetChain()
+
 	for {
 		var msg node.Message
 		var appMsg Message
@@ -94,7 +99,7 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		//uiChannel <- msg
-		var client = clientNode.(*client.Client)
+
 		client.HandleUiMessage(msg)
 	}
 }
