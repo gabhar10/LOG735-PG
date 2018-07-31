@@ -150,6 +150,7 @@ func (m *Miner) BroadcastBlock(b node.Block) error {
 			log.Println("Error: Peer's connection is nil")
 			return fmt.Errorf("Error: Peer's connection is nil")
 		}
+		log.Printf("Sending block to peer %s", peer.Port)
 		err := peer.Conn.Call("NodeRPC.DeliverBlock", &args, &reply)
 		if err != nil {
 			log.Printf("Error while delivering block: %v", err)
@@ -431,6 +432,7 @@ func (m *Miner) OpenConnection(host string, connectingPort string) error {
 	}
 	log.Printf("Successfully peered with node-%s\n", connectingPort)
 	anchorPeer.Conn = client
+
 	m.Peers = append(m.Peers, anchorPeer)
 
 	return nil

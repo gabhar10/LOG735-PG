@@ -141,7 +141,9 @@ func (c *Client) Connect(host string, anchorPort string) error {
 
 
 	var replyBlock brpc.BlocksRPC
-	err = client.Call("NodeRPC.GetBlocks", nil, &replyBlock)
+	var sendBlock brpc.GetBlocksRPC
+
+	err = client.Call("NodeRPC.GetBlocks", sendBlock, &replyBlock)
 	if err != nil {
 		log.Printf("Error while fetching block from anchor : %s", err)
 		c.Peers = nil

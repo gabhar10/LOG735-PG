@@ -28,6 +28,10 @@ func TestClient05_connect(t *testing.T) {
 		}
 
 
+		if len(m.Peers) != 1{
+			t.Fatalf("Miner's slice length should be 1, was %d", len(m.Peers))
+		}
+
 
 		found := false
 		for i := 0; i < len(m.Peers); i++ {
