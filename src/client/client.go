@@ -139,6 +139,17 @@ func (c *Client) Connect(host string, anchorPort string) error {
 		return err
 	}
 
+
+	var replyBlock brpc.BlocksRPC
+	err = client.Call("NodeRPC.GetBlocks", nil, &replyBlock)
+	if err != nil {
+		log.Printf("Error while fetching block from anchor : %s", err)
+		c.Peers = nil
+		return err
+	}
+	for _, block := range replyBlock.Blocks{
+		c.ParseBlock(block)
+	}
 	// Restart Message Loop
 	//go c.StartMessageLoop()
 

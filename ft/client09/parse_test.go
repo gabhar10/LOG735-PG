@@ -36,7 +36,7 @@ func TestClient09_parse(t *testing.T) {
 			},
 		}
 
-		uiChan := make(chan node.Message, node.BlockSize)
+		uiChan := make(chan node.Message, node.BlockSize*2)
 		c := client.NewClient(Localhost, ClientID, clientPeers, uiChan, nil).(*client.Client)
 
 		err := m.SetupRPC()
@@ -82,9 +82,6 @@ func TestClient09_parse(t *testing.T) {
 			t.Errorf("Channel should have 5 element in it; had %d", len(uiChan))
 		}
 
-
-
-
 		m.ReceiveMessage("peer-6", "Test-6", "time-6", rpc.MessageType)
 		m.ReceiveMessage("peer-7", "Test-7", "time-7", rpc.MessageType)
 		m.ReceiveMessage("peer-8", "Test-8", "time-8", rpc.MessageType)
@@ -103,8 +100,8 @@ func TestClient09_parse(t *testing.T) {
 			t.Errorf("Miner did not mine a second block")
 		}
 
-		if len(uiChan) != 5 {
-			t.Errorf("Channel should have 5 element in it; had %d", len(uiChan))
+		if len(uiChan) != 10 {
+			t.Errorf("Channel should have 10 element in it; had %d", len(uiChan))
 		}
 	})
 }
