@@ -10,6 +10,7 @@ import (
 	"net/rpc"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -24,6 +25,7 @@ type (
 		nodeChannel    chan node.Message // Channel to send message from chat application to node
 		msgLoopChan    chan string
 		msgLoopRunning bool
+		blocksMutex    *sync.Mutex
 	}
 )
 
@@ -41,6 +43,7 @@ func NewClient(host string, port string, peers []*node.Peer, uiChannel chan node
 		nodeChannel,
 		make(chan string),
 		false,
+		&sync.Mutex{},
 	}
 	c.rpcHandler.Node = c
 	return c
@@ -188,6 +191,28 @@ func (c *Client) Disconnect() error {
 func (c *Client) OpenConnection(host string, connectingPort string) error {
 	log.Printf("Client-%s::Entering OpenConnection()", c.ID)
 	defer log.Printf("Client-%s::Leaving OpenConnection()", c.ID)
+
+	// Do we already have a connection to this peer?
+	for _, p := range c.Peers {
+		if p.Host == host && p.Port == connectingPort {
+			// We already have the peer
+			return nil
+		}
+	}
+
+	anchorPeer := &node.Peer{
+		Host: host,
+		Port: connectingPort}
+
+	client, err := brpc.ConnectTo(*anchorPeer)
+	if err != nil {
+		log.Printf("Error while connecting to requesting peer %s", connectingPort)
+		return err
+	}
+	log.Printf("Successfully peered with node-%s\n", connectingPort)
+	anchorPeer.Conn = client
+
+	c.Peers = append(c.Peers, anchorPeer)
 
 	return nil
 }
@@ -376,7 +401,12 @@ func (c *Client) ReceiveBlock(block node.Block, peer string) error {
 
 		firstCharacters := string(hash[:node.MiningDifficulty])
 		if strings.Count(firstCharacters, "0") == node.MiningDifficulty && hash == block.Header.Hash {
-			log.Println("Check if blocks are identical")
+			log.Printf("Locking blocksMutex mutex")
+			c.blocksMutex.Lock()
+			log.Printf("Locked blocksMutex mutex")
+			log.Println("Received block's hash is valid!")
+			log.Println("But we still need to do some checking")
+
 		} else {
 			log.Printf("Received block's hash is not valid! Discarding block (%v != %v)", block.Header.Hash, hash)
 			return nil
@@ -394,6 +424,9 @@ func (c *Client) ReceiveBlock(block node.Block, peer string) error {
 	// TODO: Use mutex?
 	tempBlocks := append(c.blocks, block)
 	c.blocks = tempBlocks
+	c.blocksMutex.Unlock()
+	log.Printf("Unlocked blocksMutex mutex")
+
 	c.ParseBlock(block)
 
 	return c.BroadcastBlock(block)
