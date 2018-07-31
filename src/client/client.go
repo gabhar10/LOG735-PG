@@ -85,6 +85,7 @@ func (c *Client) Peer() error {
 	log.Printf("Client-%s::Entering Peer()", c.ID)
 	defer log.Printf("Client-%s::Leaving Peer()", c.ID)
 
+	var newChain bool
 	for _, peer := range c.Peers {
 		client, err := brpc.ConnectTo(*peer)
 		if err != nil {
@@ -100,13 +101,42 @@ func (c *Client) Peer() error {
 			return err
 		}
 
-		// Take longest chain
+		// Take longest valid chain
 		if len(reply.Blocks) > len(c.blocks) {
-			c.blocks = reply.Blocks
+			// Iterate over new chain.
+			var invalid bool
+			for i := len(reply.Blocks) - 1; i > 0; i-- {
+				if reply.Blocks[i-1].Header.Hash != reply.Blocks[i].Header.PreviousBlock {
+					invalid = true
+					break
+				}
+			}
+			if !invalid {
+				log.Println("Incoming blockchain is valid!")
+				c.blocks = reply.Blocks
+				newChain = true
+			}
+		} else if len(c.blocks) > 0 && len(reply.Blocks) == len(c.blocks) {
+			log.Println("Received chain is as large as mine")
+			if reply.Blocks[len(reply.Blocks)-1].Header.Nounce > c.blocks[len(c.blocks)-1].Header.Nounce {
+				log.Printf("Mine has higher nounce: %d > %d", c.blocks[len(c.blocks)-1].Header.Nounce, reply.Blocks[len(reply.Blocks)-1].Header.Nounce)
+			} else {
+				log.Printf("Incoming block has higher nounce, making it my main chain: %d > %d", reply.Blocks[len(reply.Blocks)-1].Header.Nounce, c.blocks[len(c.blocks)-1].Header.Nounce)
+				c.blocks = reply.Blocks
+				newChain = true
+			}
 		}
-
 		peer.Conn = client
 		log.Printf("Successfully peered with node-%s\n", fmt.Sprintf("%s:%s", peer.Host, peer.Port))
+	}
+	if newChain {
+		for _, b := range c.blocks {
+			err := c.BroadcastBlock(b)
+			if err != nil {
+				log.Printf("Error while broadcasting newly received blockchain")
+				return err
+			}
+		}
 	}
 	return nil
 }
