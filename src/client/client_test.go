@@ -44,7 +44,7 @@ func TestClient_Peer(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := NewClient(tt.fields.Host, tt.fields.ID, tt.fields.peers, tt.fields.uiChannel, tt.fields.nodeChannel)
+			c := NewClient(tt.fields.Host, tt.fields.ID, tt.fields.peers, tt.fields.uiChannel, tt.fields.nodeChannel, false)
 			if err := c.Peer(); (err != nil) != tt.wantErr {
 				t.Errorf("Client.Peer() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -119,7 +119,7 @@ func TestClient_ReceiveBlock(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := NewClient(tt.fields.Host, tt.fields.ID, tt.fields.Peers, tt.fields.uiChannel, tt.fields.nodeChannel)
+			c := NewClient(tt.fields.Host, tt.fields.ID, tt.fields.Peers, tt.fields.uiChannel, tt.fields.nodeChannel, false)
 			if err := c.ReceiveBlock(tt.args.block, tt.fields.Host); (err != nil) != tt.wantErr {
 				t.Errorf("Client.ReceiveBlock() error = %v, wantErr %v", err, tt.wantErr)
 			}

@@ -19,7 +19,7 @@ func TestClient05_connect(t *testing.T) {
 		m.SetupRPC()
 		// Create client
 
-		c := client.NewClient("127.0.0.1", ClientID, nil, nil, nil).(*client.Client)
+		c := client.NewClient("127.0.0.1", ClientID, nil, nil, nil, false).(*client.Client)
 		c.SetupRPC()
 
 		err := c.Connect("127.0.0.1", MinerID)

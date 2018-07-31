@@ -32,6 +32,7 @@ type Message struct {
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	log.Printf("My peers are %v", os.Getenv("PEERS"))
+	log.Printf("traffic is %v", os.Getenv("TRAFFIC"))
 	peers := []*node.Peer{}
 	for _, s := range strings.Split(os.Getenv("PEERS"), " ") {
 		p := &node.Peer{
@@ -40,7 +41,13 @@ func main() {
 		peers = append(peers, p)
 	}
 
-	clientNode = client.NewClient(fmt.Sprintf("node-%s", os.Getenv("PORT")), os.Getenv("PORT"), peers, uiChannel, nodeChannel)
+
+	var traffic = false
+	if os.Getenv("TRAFFIC") == "True" {
+		traffic = true
+	}
+
+	clientNode = client.NewClient(fmt.Sprintf("node-%s", os.Getenv("PORT")), os.Getenv("PORT"), peers, uiChannel, nodeChannel, traffic)
 
 	err := clientNode.SetupRPC()
 	if err != nil {
@@ -67,7 +74,9 @@ func main() {
 		}
 	}()
 
-	//clientNode.Start()
+	if traffic == true{
+		clientNode.Start()
+	}
 
 	for {
 		time.Sleep(time.Hour)

@@ -41,7 +41,8 @@ func main() {
 			os.Getenv("PORT"),
 			peers,
 			nil,
-			nil)
+			nil,
+			false)
 	case "miner":
 		n = miner.NewMiner(os.Getenv("PORT"), peers)
 	default:

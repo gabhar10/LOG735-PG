@@ -41,7 +41,7 @@ func TestMiner02(t *testing.T) {
 
 		// Create client1
 		nodeChan1 := make(chan node.Message, 1)
-		c1 := client.NewClient(Localhost, Client1ID, clientPeers, nil, nodeChan1).(*client.Client)
+		c1 := client.NewClient(Localhost, Client1ID, clientPeers, nil, nodeChan1, false).(*client.Client)
 		err = c1.SetupRPC()
 		if err != nil {
 			t.Errorf("Error while setting up RPC: %v", err)

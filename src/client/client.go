@@ -26,10 +26,12 @@ type (
 		msgLoopChan    chan string
 		msgLoopRunning bool
 		blocksMutex    *sync.Mutex
+		trafficGeneration bool
 	}
 )
 
-func NewClient(host string, port string, peers []*node.Peer, uiChannel chan node.Message, nodeChannel chan node.Message) node.Node {
+func NewClient(host string, port string, peers []*node.Peer, uiChannel chan node.Message, nodeChannel chan node.Message,
+	trafficGeneration bool) node.Node {
 	log.Println("Client::Entering NewClient()")
 	defer log.Println("Client::Leaving NewClient()")
 
@@ -44,6 +46,7 @@ func NewClient(host string, port string, peers []*node.Peer, uiChannel chan node
 		make(chan string),
 		false,
 		&sync.Mutex{},
+		trafficGeneration,
 	}
 	c.rpcHandler.Node = c
 	return c
@@ -162,7 +165,9 @@ func (c *Client) Connect(host string, anchorPort string) error {
 		c.ParseBlock(block)
 	}
 	// Restart Message Loop
-	//go c.StartMessageLoop()
+	if c.trafficGeneration == true{
+		go c.StartMessageLoop()
+	}
 
 	return nil
 }
@@ -186,7 +191,10 @@ func (c *Client) Disconnect() error {
 		}
 	}
 	c.Peers = nil
-	if c.msgLoopRunning == true {
+
+
+
+	if c.trafficGeneration == true && c.msgLoopRunning == true {
 		c.msgLoopChan <- " "
 		c.msgLoopRunning = false
 	}
@@ -271,6 +279,8 @@ func (c *Client) StartMessageLoop() error {
 	log.Printf("Client-%s::Entering StartMessageLoop()", c.ID)
 	defer log.Printf("Client-%s::Leaving StartMessageLoop()", c.ID)
 
+	time.Sleep(20 * time.Second)
+
 	c.msgLoopRunning = true
 	for {
 		select {
@@ -280,7 +290,7 @@ func (c *Client) StartMessageLoop() error {
 			time.Sleep(5 * time.Second)
 			for _, peer := range c.Peers {
 				var reply int
-				message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, "Bonjour", time.Now().Format(time.RFC3339Nano), brpc.MessageType}
+				message := brpc.MessageRPC{brpc.ConnectionRPC{c.ID}, "Bonjour!", time.Now().Format(time.RFC3339Nano), brpc.MessageType}
 
 				if peer.Conn == nil {
 					log.Println("Error: Peer's connection is nil")
