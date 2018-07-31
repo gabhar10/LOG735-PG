@@ -21,7 +21,7 @@ func TestMiner06(t *testing.T) {
 	const TestContent4 = "This is a another test from Client2"
 	const TestContent5 = "This is again another test from Client2"
 
-	t.Run("Send message to miner", func(t *testing.T) {
+	t.Run("Après avoir découvert une solution valide à la création d’un bloc, un mineur doit diffuser ce bloc à ses voisins.", func(t *testing.T) {
 		// Create miner
 		minerPeers := []*node.Peer{
 			&node.Peer{
@@ -161,7 +161,7 @@ func TestMiner06(t *testing.T) {
 			t.Errorf("Error while sending message: %v", err)
 		}
 
-		// Wait 25 seconds for miner to mine its block
+		// Wait maximum 25 seconds for miner to mine its block
 		received := false
 		for i := 0; i < 5; i++ {
 			if len(c1.GetBlocks()) > 0 && len(c2.GetBlocks()) > 0 && len(mPeer.GetBlocks()) > 0 {

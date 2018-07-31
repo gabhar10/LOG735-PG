@@ -14,7 +14,7 @@ func TestMiner03(t *testing.T) {
 	const ClientID = "8889"
 	const TestContent = "This is a test"
 
-	t.Run("Send message to miner", func(t *testing.T) {
+	t.Run("Un mineur doit écouter pour les transactions des clients dans le réseau et pouvoir les accumuler dans une liste.", func(t *testing.T) {
 		// Create miner
 		minerPeers := []*node.Peer{
 			&node.Peer{

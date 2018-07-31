@@ -5,6 +5,7 @@ import (
 	brpc "LOG735-PG/src/rpc"
 	"crypto/sha256"
 	"fmt"
+	"log"
 	"net"
 	"reflect"
 	"strings"
@@ -221,6 +222,7 @@ func TestMiner_Start(t *testing.T) {
 		incomingBlockChan chan node.Block
 		quit              chan bool
 		mutex             *sync.Mutex
+		startMiningMutex  *sync.Mutex
 	}
 	tests := []struct {
 		name   string
@@ -229,7 +231,8 @@ func TestMiner_Start(t *testing.T) {
 		{
 			name: "Sunny Day",
 			fields: fields{
-				mutex: new(sync.Mutex),
+				mutex:            new(sync.Mutex),
+				startMiningMutex: new(sync.Mutex),
 			},
 		},
 	}
@@ -244,8 +247,11 @@ func TestMiner_Start(t *testing.T) {
 				incomingBlockChan: tt.fields.incomingBlockChan,
 				quit:              tt.fields.quit,
 				mutex:             tt.fields.mutex,
+				startMiningMutex:  tt.fields.startMiningMutex,
 			}
 			m.Start()
+			// Since start is in a thread, wait 3 seconds to catch any issues
+			time.Sleep(time.Second * 3)
 		})
 	}
 }
@@ -529,6 +535,9 @@ func TestMiner_ReceiveBlock(t *testing.T) {
 					for _, msg := range messages {
 						m.IncomingMsgChan <- msg
 					}
+
+					log.Println("Locking startMiningMutex")
+					m.startMiningMutex.Lock()
 					b, err := m.mining()
 					if err != nil {
 						t.Errorf("Error while mining: %v", err)
@@ -559,6 +568,7 @@ func TestMiner_mining(t *testing.T) {
 		incomingBlockChan chan node.Block
 		quit              chan bool
 		mutex             *sync.Mutex
+		startMiningMutex  *sync.Mutex
 	}
 	tests := []struct {
 		name   string
@@ -575,6 +585,7 @@ func TestMiner_mining(t *testing.T) {
 				make(chan node.Message, node.MessagesChannelSize),
 				make(chan node.Block, node.BlocksChannelSize),
 				make(chan bool),
+				new(sync.Mutex),
 				new(sync.Mutex),
 			},
 			want: func() node.Block {
@@ -600,6 +611,7 @@ func TestMiner_mining(t *testing.T) {
 					return c
 				}(),
 				new(sync.Mutex),
+				new(sync.Mutex),
 			},
 			want: node.Block{},
 		},
@@ -615,6 +627,7 @@ func TestMiner_mining(t *testing.T) {
 				incomingBlockChan: tt.fields.incomingBlockChan,
 				quit:              tt.fields.quit,
 				mutex:             tt.fields.mutex,
+				startMiningMutex:  tt.fields.startMiningMutex,
 			}
 			// Send messages in go routine
 			go func() {
@@ -625,6 +638,8 @@ func TestMiner_mining(t *testing.T) {
 				}
 			}()
 
+			log.Println("Locking startMiningMutex")
+			m.startMiningMutex.Lock()
 			got, err := m.mining()
 			if err != nil {
 				t.Errorf("Error while mining: %v", err)
@@ -670,10 +685,8 @@ func TestMiner_mining(t *testing.T) {
 						}
 					}
 				}
-			} else {
-				if got != (node.Block{}) {
-					t.Errorf("Invoking quit should have returned empty block")
-				}
+			} else if got != (node.Block{}) {
+				t.Errorf("Invoking quit should have returned empty block")
 			}
 		})
 	}
@@ -723,6 +736,9 @@ func TestMiner_BroadcastBlock(t *testing.T) {
 					for _, msg := range messages {
 						m.IncomingMsgChan <- msg
 					}
+
+					log.Println("Locking startMiningMutex")
+					m.startMiningMutex.Lock()
 					b, err := m.mining()
 					if err != nil {
 						t.Errorf("Error while mining: %v", err)
@@ -803,6 +819,9 @@ func TestMiner_clearProcessedMessages(t *testing.T) {
 							Content: "This is a test",
 							Time:    time.Now().Format(time.RFC3339Nano)}
 					}
+
+					log.Println("Locking startMiningMutex")
+					m.startMiningMutex.Lock()
 					b, err := m.mining()
 					if err != nil {
 						t.Errorf("Error while mining: %v", err)
