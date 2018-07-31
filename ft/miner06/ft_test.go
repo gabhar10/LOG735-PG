@@ -94,7 +94,7 @@ func TestMiner06(t *testing.T) {
 
 		// Create client2
 		nodeChan2 := make(chan node.Message, 1)
-		c2 := client.NewClient(Localhost ,Client2ID, clientPeers, nil, nodeChan2).(*client.Client)
+		c2 := client.NewClient(Localhost, Client2ID, clientPeers, nil, nodeChan2).(*client.Client)
 		c2.SetupRPC()
 		err = c2.Peer()
 		if err != nil {
@@ -163,17 +163,17 @@ func TestMiner06(t *testing.T) {
 		}
 
 		// Wait maximum 25 seconds for miner to mine its block
-		received := false
-		for i := 0; i < 5; i++ {
-			if len(c1.GetBlocks()) > 0 && len(c2.GetBlocks()) > 0 && len(mPeer.GetBlocks()) > 0 {
-				received = true
+
+		time.Sleep(time.Second * 5)
+
+		for {
+			if len(c1.GetBlocks()) > 1 || len(c2.GetBlocks()) > 1 || len(mPeer.GetBlocks()) > 1 {
+				t.Errorf("All nodes should have blocks of size 1")
+			}
+			if len(c1.GetBlocks()) == 1 && len(c2.GetBlocks()) == 1 && len(mPeer.GetBlocks()) == 1 {
 				break
 			}
 			time.Sleep(time.Second * 2)
-		}
-
-		if !received {
-			t.Errorf("Never received a block")
 		}
 
 		c1Blocks := c1.GetBlocks()
@@ -185,7 +185,7 @@ func TestMiner06(t *testing.T) {
 		}
 
 		if !reflect.DeepEqual(c2Blocks, mPeerBlocks) {
-			t.Errorf("Miner and clients did not receive the same block")
+			t.Errorf("Miner and clients did not receive the same block: %v != %v", c2Blocks, mPeerBlocks)
 		}
 
 		if c1Blocks[0].Messages[0].Content != TestContent1 {
