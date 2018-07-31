@@ -346,36 +346,10 @@ func (c *Client) StartMessageLoop() error {
 				}
 
 			}
-			if c.nodeChannel != nil {
-				c.uiChannel <- node.Message{c.ID, "Bonjour", time.Now().Format(time.RFC3339Nano)}
-			}
 		}
 	}
 
 	return nil
-}
-
-func (c *Client) GetAnchorBlock() ([]node.Block, error) {
-	if len(c.Peers) > 0 {
-		if c.Peers[0].Conn != nil {
-			var reply brpc.BlocksRPC
-
-			if c.Peers[0].Conn == nil {
-				log.Println("Error: Peer's connection is nil")
-				return nil, fmt.Errorf("Error: Peer's connection is nil")
-			}
-			err := c.Peers[0].Conn.Call("NodeRPC.GetBlocks", nil, &reply)
-			if err != nil {
-				log.Printf("Error while trying getting blocks: %v", err)
-				log.Printf("Closing connection")
-				c.CloseConnection(c.Peers[0].Port)
-				return nil, nil
-			}
-			return reply.Blocks, nil
-		}
-		return nil, fmt.Errorf("no open connection with peer")
-	}
-	return nil, fmt.Errorf("there are no peer available to give a block")
 }
 
 func (c *Client) ParseBlock(block node.Block) error {
