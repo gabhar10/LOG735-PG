@@ -157,7 +157,8 @@ func (c *Client) Connect(host string, anchorPort string) error {
 		c.Peers = nil
 		return err
 	}
-	for _, block := range replyBlock.Blocks {
+	c.blocks = replyBlock.Blocks
+	for _, block := range c.blocks {
 		c.ParseBlock(block)
 	}
 	// Restart Message Loop
@@ -230,7 +231,6 @@ func (c *Client) CloseConnection(disconnectingPeer string) error {
 
 	for i := 0; i < len(c.Peers); i++ {
 		if c.Peers[i].Port == disconnectingPeer {
-			c.Peers[i].Conn.Close()
 			c.Peers[i] = c.Peers[len(c.Peers)-1]
 			c.Peers = c.Peers[:len(c.Peers)-1]
 			break
