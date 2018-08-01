@@ -16,16 +16,16 @@ import (
 
 type (
 	Client struct {
-		Host           string
-		ID             string            // i.e. Run-time port associated to container
-		blocks         []node.Block      // Can be a subset of the full chain
-		Peers          []*node.Peer      // Slice of Peers
-		rpcHandler     *brpc.NodeRPC     // Handler for RPC calls
-		uiChannel      chan node.Message // Channel to send message from node to chat application
-		nodeChannel    chan node.Message // Channel to send message from chat application to node
-		msgLoopChan    chan string
-		msgLoopRunning bool
-		blocksMutex    *sync.Mutex
+		Host              string
+		ID                string            // i.e. Run-time port associated to container
+		blocks            []node.Block      // Can be a subset of the full chain
+		Peers             []*node.Peer      // Slice of Peers
+		rpcHandler        *brpc.NodeRPC     // Handler for RPC calls
+		uiChannel         chan node.Message // Channel to send message from node to chat application
+		nodeChannel       chan node.Message // Channel to send message from chat application to node
+		msgLoopChan       chan string
+		msgLoopRunning    bool
+		blocksMutex       *sync.Mutex
 		trafficGeneration bool
 	}
 )
@@ -203,7 +203,7 @@ func (c *Client) Connect(host string, anchorPort string) error {
 		c.ParseBlock(block)
 	}
 	// Restart Message Loop
-	if c.trafficGeneration == true{
+	if c.trafficGeneration == true {
 		go c.StartMessageLoop()
 	}
 
@@ -229,8 +229,6 @@ func (c *Client) Disconnect() error {
 		}
 	}
 	c.Peers = nil
-
-
 
 	if c.trafficGeneration == true && c.msgLoopRunning == true {
 		c.msgLoopChan <- " "
@@ -409,19 +407,17 @@ func (c *Client) ReceiveBlock(block node.Block, peer string) error {
 		}
 	}
 
-	valid := false
-	//es-ce que le bloc precedant existe dans la chaine
-	for i := len(c.blocks) - 1; i >= 0; i-- {
-		if block.Header.PreviousBlock == c.blocks[i].Header.Hash {
-			valid = true
-			break
-		}
+	if len(c.blocks) > 0 && (block.Header.PreviousBlock != c.blocks[len(c.blocks)-1].Header.Hash) {
+		log.Println("Incoming block does not point at the head of the chain")
+		return nil
 	}
 
+	valid := true
+
 	// We don't have any blocks and the received one is a genesis block
-	if block.Header.PreviousBlock == ([sha256.Size]byte{}) && len(c.blocks) == 0 {
-		valid = true
-	}
+	// if len(c.blocks) == 0 && block.Header.PreviousBlock == ([sha256.Size]byte{}) && ) {
+	// 	valid = false
+	// }
 
 	//que le hash est correct (bonne difficulter)
 	if valid {
@@ -429,6 +425,7 @@ func (c *Client) ReceiveBlock(block node.Block, peer string) error {
 			PreviousBlock: block.Header.PreviousBlock,
 			Nounce:        block.Header.Nounce,
 			Date:          block.Header.Date,
+			ContentHash:   block.Header.ContentHash,
 		}
 		header.Hash = [sha256.Size]byte{}
 		hash := sha256.Sum256([]byte(fmt.Sprintf("%v", header)))
@@ -436,6 +433,11 @@ func (c *Client) ReceiveBlock(block node.Block, peer string) error {
 		if block.Header.Hash != hash {
 			log.Printf("Error while validating hash! (%v != %v)", hash, block.Header.Hash)
 			return fmt.Errorf("Error while validating hash! (%v != %v)", hash, block.Header.Hash)
+		}
+		contentHash := sha256.Sum256([]byte(fmt.Sprintf("%v", block.Messages)))
+		if block.Header.ContentHash != contentHash {
+			log.Printf("Error while validating content hash! (%v != %v)", contentHash, block.Header.ContentHash)
+			return fmt.Errorf("Error while validating content hash! (%v != %v)", contentHash, block.Header.ContentHash)
 		}
 
 		firstCharacters := string(hash[:node.MiningDifficulty])

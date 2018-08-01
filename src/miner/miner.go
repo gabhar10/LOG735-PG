@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"net/rpc"
 	"os"
@@ -27,6 +28,7 @@ type Miner struct {
 	startMiningMutex  *sync.Mutex
 	waitingList       []node.Message
 	malicious         bool
+	miningSleep       time.Duration
 }
 
 func NewMiner(port string, peers []*node.Peer) node.Node {
@@ -45,8 +47,16 @@ func NewMiner(port string, peers []*node.Peer) node.Node {
 		&sync.Mutex{},
 		[]node.Message{},
 		strings.Contains(strings.ToLower(os.Getenv("MALICIOUS")), "true"),
+		time.Second * 0,
 	}
 	log.Printf("Malicious: %v", m.malicious)
+
+	if m.malicious {
+		m.miningSleep = node.MaliciousMinerSleepTime
+	} else {
+		m.miningSleep = node.MinerSleepTime
+	}
+
 	m.rpcHandler.Node = m
 	return m
 }
@@ -257,6 +267,18 @@ func (m *Miner) CreateBlock() node.Block {
 
 	for i := 0; i < node.BlockSize; i++ {
 		msg := <-m.IncomingMsgChan
+
+		// If malicious miner, alternate content of received messages
+		if m.malicious {
+			//log.Println("I am a malicious miner. I need to alter the content")
+			contentByte := []byte(msg.Content)
+			for i := 0; i < len(contentByte); i++ {
+				log.Println("Scrambling messages")
+				contentByte[i] = byte(65 + (rand.Int() % 26)) // 1 letter in the alphabet
+			}
+			msg.Content = string(contentByte)
+		}
+
 		messages[i] = msg
 	}
 
@@ -267,40 +289,29 @@ func (m *Miner) ReceiveMessage(content, temps, peer string, messageType int) err
 	log.Printf("Miner-%s::Entering ReceiveMessage()", m.ID)
 	defer log.Printf("Miner-%s::Leaving ReceiveMessage()", m.ID)
 
-	// If malicious miner, alternate content of received messages
-	if m.malicious {
-		contentByte := []byte(content)
-		for i := 0; i < len(contentByte); i++ {
-			contentByte[i]++
-		}
-		content = string(contentByte)
-	}
-
 	// Check if we don't alrady have the message in the waiting list
 	msg := node.Message{
 		Peer:    peer,
 		Content: content,
 		Time:    temps,
 	}
+
 	for _, m := range m.waitingList {
 		if reflect.DeepEqual(m, msg) {
-			log.Printf("Message \"%s\" from peer \"%s\" is already in waiting list from %s", content, peer, msg.Time)
+			log.Printf("Message \"%s\" from peer \"%s\" is already in waiting list from %s", content, peer, temps)
 			return nil
 		}
 	}
-	log.Printf("Appending message \"%s\" from peer \"%s\" in waiting list at %s", msg.Content, msg.Peer, msg.Time)
 
-	//log.Printf("Locking mutex mutex")
-	//m.mutex.Lock()
-	//log.Printf("Locked mutex mutex")
+	log.Printf("Appending message \"%s\" from peer \"%s\" in waiting list at %s", msg.Content, msg.Peer, msg.Time)
 	m.waitingList = append(m.waitingList, msg)
-	//m.mutex.Unlock()
-	//log.Printf("Unlocked mutex mutex")
+	//if !m.malicious {
 	err := m.Broadcast(msg)
 	if err != nil {
 		log.Printf("Error while broadcasting to peer: %v", err)
 		return err
 	}
+	//}
 	m.IncomingMsgChan <- msg
 	return nil
 }
@@ -318,19 +329,17 @@ func (m *Miner) ReceiveBlock(block node.Block, peer string) error {
 		}
 	}
 
-	valid := false
-	//es-ce que le bloc precedant existe dans la chaine
-	for i := len(m.blocks) - 1; i >= 0; i-- {
-		if block.Header.PreviousBlock == m.blocks[i].Header.Hash {
-			valid = true
-			break
-		}
+	if len(m.blocks) > 0 && (block.Header.PreviousBlock != m.blocks[len(m.blocks)-1].Header.Hash) {
+		log.Println("Incoming block does not point at the head of the chain")
+		return nil
 	}
 
+	valid := true
+
 	// We don't have any blocks and the received one is a genesis block
-	if block.Header.PreviousBlock == ([sha256.Size]byte{}) && len(m.blocks) == 0 {
-		valid = true
-	}
+	// if !(block.Header.PreviousBlock == ([sha256.Size]byte{}) && len(m.blocks) == 0) {
+	// 	valid = false
+	// }
 
 	//que le hash est correct (bonne difficulter)
 	if valid {
@@ -338,6 +347,7 @@ func (m *Miner) ReceiveBlock(block node.Block, peer string) error {
 			PreviousBlock: block.Header.PreviousBlock,
 			Nounce:        block.Header.Nounce,
 			Date:          block.Header.Date,
+			ContentHash:   block.Header.ContentHash,
 		}
 		header.Hash = [sha256.Size]byte{}
 		hash := sha256.Sum256([]byte(fmt.Sprintf("%v", header)))
@@ -345,6 +355,11 @@ func (m *Miner) ReceiveBlock(block node.Block, peer string) error {
 		if block.Header.Hash != hash {
 			log.Printf("Error while validating hash! (%v != %v)", hash, block.Header.Hash)
 			return fmt.Errorf("Error while validating hash! (%v != %v)", hash, block.Header.Hash)
+		}
+		contentHash := sha256.Sum256([]byte(fmt.Sprintf("%v", block.Messages)))
+		if block.Header.ContentHash != contentHash {
+			log.Printf("Error while validating content hash! (%v != %v)", contentHash, block.Header.ContentHash)
+			return fmt.Errorf("Error while validating content hash! (%v != %v)", contentHash, block.Header.ContentHash)
 		}
 
 		firstCharacters := string(hash[:node.MiningDifficulty])
@@ -383,6 +398,8 @@ func (m *Miner) ReceiveBlock(block node.Block, peer string) error {
 			log.Printf("Error while broadcasting block: %v", err)
 			return err
 		}
+	} else {
+		log.Println("I am a malicious miner. I won't broadcast this block")
 	}
 	return nil
 }
@@ -418,6 +435,10 @@ func (m *Miner) findingNounce(block *node.Block) ([sha256.Size]byte, error) {
 	var firstCharacters string
 	var hashedHeader [sha256.Size]byte
 	nounce := uint64(0)
+
+	contentHash := sha256.Sum256([]byte(fmt.Sprintf("%v", block.Messages)))
+	block.Header.ContentHash = contentHash
+
 findingNounce:
 	for {
 		select {
@@ -435,9 +456,7 @@ findingNounce:
 			}
 			nounce++
 		}
-		if m.malicious {
-			time.Sleep(time.Nanosecond * 6000)
-		}
+		time.Sleep(m.miningSleep)
 	}
 	log.Printf("Took %d tries to find nounce", nounce)
 	return hashedHeader, nil

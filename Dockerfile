@@ -17,15 +17,15 @@ COPY src/ /usr/local/go/src/LOG735-PG/src
 RUN install -d /usr/local/go/src/LOG735-PG/ft
 COPY ft/ /usr/local/go/src/LOG735-PG/ft
 # Start testing
-WORKDIR /usr/local/go/src/LOG735-PG/src
+#WORKDIR /usr/local/go/src/LOG735-PG/src
 # Test client package
-RUN pushd client; go test; popd
+#RUN pushd client; go test; popd
 # Test miner package
-RUN pushd miner; go test; popd
+#RUN pushd miner; go test; popd
 # Run functional tests
-RUN install -d /usr/local/go/src/LOG735-PG/scripts
-COPY scripts/iterate_dir.sh /usr/local/go/src/LOG735-PG/scripts
-RUN /usr/local/go/src/LOG735-PG/scripts/iterate_dir.sh
+#RUN install -d /usr/local/go/src/LOG735-PG/scripts
+#COPY scripts/iterate_dir.sh /usr/local/go/src/LOG735-PG/scripts
+#RUN /usr/local/go/src/LOG735-PG/scripts/iterate_dir.sh
 # Build image
 WORKDIR /usr/local/go/src/LOG735-PG/src
 RUN go build main.go
