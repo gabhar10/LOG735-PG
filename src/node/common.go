@@ -1,6 +1,9 @@
 package node
 
-import "net/rpc"
+import (
+	"net/rpc"
+	"time"
+)
 
 // BlockSize is the size of a single block (e.g. amount of messages per block)
 const BlockSize = 5
@@ -16,6 +19,12 @@ const MessagesChannelSize = 100
 
 // BlocksChannelSize is the size of the channel for incoming blocks from other miners
 const BlocksChannelSize = 10
+
+// MaliciousMinerSleepTime is the amount of time a malicious miner sleep before trying to find the nounce
+const MaliciousMinerSleepTime = time.Microsecond * 10
+
+// MinerSleepTime is the amount of time a miner sleep before trying to find the nounce
+const MinerSleepTime = time.Second * 0
 
 type Peer struct {
 	Host string

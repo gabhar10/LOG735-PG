@@ -7,6 +7,7 @@ import (
 type Header struct {
 	PreviousBlock [sha256.Size]byte
 	Hash          [sha256.Size]byte
+	ContentHash   [sha256.Size]byte
 	Nounce        uint64
 	Date          string
 }

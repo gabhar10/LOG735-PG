@@ -24,6 +24,7 @@ func TestMiner_findingNounce(t *testing.T) {
 		incomingBlockChan chan node.Block
 		quit              chan bool
 		mutex             *sync.Mutex
+		miningSleep       time.Duration
 	}
 	type args struct {
 		block *node.Block
@@ -46,6 +47,7 @@ func TestMiner_findingNounce(t *testing.T) {
 				make(chan node.Block, 10),
 				make(chan bool),
 				new(sync.Mutex),
+				time.Second * 0,
 			},
 			args: args{
 				func() *node.Block {
@@ -71,6 +73,10 @@ func TestMiner_findingNounce(t *testing.T) {
 					c <- true
 					return c
 				}(),
+				miningSleep: time.Second * 0,
+			},
+			args: args{
+				block: &node.Block{},
 			},
 			want:    [sha256.Size]byte{},
 			wantErr: false,
@@ -87,6 +93,7 @@ func TestMiner_findingNounce(t *testing.T) {
 				incomingBlockChan: tt.fields.incomingBlockChan,
 				quit:              tt.fields.quit,
 				mutex:             tt.fields.mutex,
+				miningSleep:       tt.fields.miningSleep,
 			}
 			got, err := m.findingNounce(tt.args.block)
 			if (err != nil) != tt.wantErr {
