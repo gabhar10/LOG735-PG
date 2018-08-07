@@ -8,7 +8,7 @@
 ## Build docker image
 
 ```bash
-make build CLIENTS=<amount-clients> MINERS=<amount-miners> MMINERS=<amount-malicious-miners>
+make build CLIENTS=<amount-clients> MINERS=<amount-miners> MMINERS=<amount-malicious-miners> TRAFFIC=<traffic-flag>
 ```
 
 Variable Name | Value Type | Description
@@ -16,6 +16,7 @@ Variable Name | Value Type | Description
 amount-miners | Integer | Total number of miners in the network. A subset are anchor miners
 amount-clients | Integer | Total number of clients in the network
 amount-malicious-miners | Integer | Total number of malicious miners in the network. Is a subnet of *honest* miners.
+traffic-flag | Boolean | 0 : traffic generation off - 1 : traffic generation on 
 
 ## Create and run topolgy
 
@@ -38,5 +39,5 @@ docker-compose -f topology/docker-compose.yaml logs -f
 
 ## Example
 ```bash
-make clean; make build CLIENTS=20 MINERS=5 MMINERS=2; make run
+make clean; make build CLIENTS=20 MINERS=5 MMINERS=2 TRAFFIC=0; make run
 ```
